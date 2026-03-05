@@ -1,0 +1,510 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AA0001 /* VinylVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0001 /* VinylVaultApp.swift */; };
+		AA0002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0002 /* ContentView.swift */; };
+		AA0003 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0003 /* HomeView.swift */; };
+		AA0004 /* CollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0004 /* CollectionView.swift */; };
+		AA0005 /* ListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0005 /* ListsView.swift */; };
+		AA0006 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0006 /* SearchView.swift */; };
+		AA0007 /* AddRecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0007 /* AddRecordView.swift */; };
+		AA0008 /* BarcodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0008 /* BarcodeScannerView.swift */; };
+		AA0009 /* ManualSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0009 /* ManualSearchView.swift */; };
+		AA0010 /* SearchResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0010 /* SearchResultsView.swift */; };
+		AA0011 /* AddCopyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0011 /* AddCopyView.swift */; };
+		AA0012 /* ReleaseDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0012 /* ReleaseDetailView.swift */; };
+		AA0013 /* EditCopyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0013 /* EditCopyView.swift */; };
+		AA0014 /* ListDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0014 /* ListDetailView.swift */; };
+		AA0015 /* Release.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0015 /* Release.swift */; };
+		AA0016 /* Copy.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0016 /* Copy.swift */; };
+		AA0017 /* RecordList.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0017 /* RecordList.swift */; };
+		AA0018 /* DiscogsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0018 /* DiscogsService.swift */; };
+		AA0019 /* WikipediaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0019 /* WikipediaService.swift */; };
+		AA0020 /* StreamingLinkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0020 /* StreamingLinkService.swift */; };
+		AA0021 /* ImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0021 /* ImageCache.swift */; };
+		AA0022 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB0022 /* Assets.xcassets */; };
+		AA0023 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0024 /* AppState.swift */; };
+		AA0024 /* AlbumArtworkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0025 /* AlbumArtworkService.swift */; };
+		AA0025 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0026 /* SettingsView.swift */; };
+		AA0026 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = BB0027 /* Localizable.strings */; };
+		AA0027 /* ImageGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0030 /* ImageGalleryView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		AAAA01 /* VinylVault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VinylVault.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0001 /* VinylVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VinylVaultApp.swift; sourceTree = "<group>"; };
+		BB0002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		BB0003 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		BB0004 /* CollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionView.swift; sourceTree = "<group>"; };
+		BB0005 /* ListsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListsView.swift; sourceTree = "<group>"; };
+		BB0006 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		BB0007 /* AddRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRecordView.swift; sourceTree = "<group>"; };
+		BB0008 /* BarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScannerView.swift; sourceTree = "<group>"; };
+		BB0009 /* ManualSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualSearchView.swift; sourceTree = "<group>"; };
+		BB0010 /* SearchResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchResultsView.swift; sourceTree = "<group>"; };
+		BB0011 /* AddCopyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddCopyView.swift; sourceTree = "<group>"; };
+		BB0012 /* ReleaseDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseDetailView.swift; sourceTree = "<group>"; };
+		BB0013 /* EditCopyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditCopyView.swift; sourceTree = "<group>"; };
+		BB0014 /* ListDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListDetailView.swift; sourceTree = "<group>"; };
+		BB0015 /* Release.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Release.swift; sourceTree = "<group>"; };
+		BB0016 /* Copy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Copy.swift; sourceTree = "<group>"; };
+		BB0017 /* RecordList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordList.swift; sourceTree = "<group>"; };
+		BB0018 /* DiscogsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscogsService.swift; sourceTree = "<group>"; };
+		BB0019 /* WikipediaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikipediaService.swift; sourceTree = "<group>"; };
+		BB0020 /* StreamingLinkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamingLinkService.swift; sourceTree = "<group>"; };
+		BB0021 /* ImageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCache.swift; sourceTree = "<group>"; };
+		BB0022 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BB0023 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BB0024 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		BB0025 /* AlbumArtworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumArtworkService.swift; sourceTree = "<group>"; };
+		BB0026 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		BB0027 /* Localizable.strings */ = {isa = PBXVariantGroup; children = (BB0028 /* en */, BB0029 /* zh-Hans */); name = Localizable.strings; sourceTree = "<group>"; };
+		BB0028 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BB0029 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		BB0030 /* ImageGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGalleryView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		CC0001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		DD0001 = {
+			isa = PBXGroup;
+			children = (
+				DD0002 /* VinylVault */,
+				DD0003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		DD0002 /* VinylVault */ = {
+			isa = PBXGroup;
+			children = (
+				DD0004 /* App */,
+				DD0005 /* Models */,
+				DD0006 /* Services */,
+				DD0007 /* Views */,
+				DD0008 /* Utilities */,
+				DD0009 /* Resources */,
+				BB0023 /* Info.plist */,
+			);
+			path = VinylVault;
+			sourceTree = "<group>";
+		};
+		DD0003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AAAA01 /* VinylVault.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DD0004 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				BB0001 /* VinylVaultApp.swift */,
+				BB0024 /* AppState.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		DD0005 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				BB0015 /* Release.swift */,
+				BB0016 /* Copy.swift */,
+				BB0017 /* RecordList.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		DD0006 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				BB0018 /* DiscogsService.swift */,
+				BB0019 /* WikipediaService.swift */,
+				BB0020 /* StreamingLinkService.swift */,
+				BB0025 /* AlbumArtworkService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		DD0007 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				BB0002 /* ContentView.swift */,
+				BB0003 /* HomeView.swift */,
+				BB0004 /* CollectionView.swift */,
+				BB0005 /* ListsView.swift */,
+				BB0006 /* SearchView.swift */,
+				BB0007 /* AddRecordView.swift */,
+				BB0008 /* BarcodeScannerView.swift */,
+				BB0009 /* ManualSearchView.swift */,
+				BB0010 /* SearchResultsView.swift */,
+				BB0011 /* AddCopyView.swift */,
+				BB0012 /* ReleaseDetailView.swift */,
+				BB0013 /* EditCopyView.swift */,
+				BB0014 /* ListDetailView.swift */,
+				BB0026 /* SettingsView.swift */,
+				BB0030 /* ImageGalleryView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		DD0008 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				BB0021 /* ImageCache.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		DD0009 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				BB0022 /* Assets.xcassets */,
+				BB0027 /* Localizable.strings */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		EE0001 /* VinylVault */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF0001 /* Build configuration list for PBXNativeTarget "VinylVault" */;
+			buildPhases = (
+				EE0002 /* Sources */,
+				CC0001 /* Frameworks */,
+				EE0003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VinylVault;
+			productName = VinylVault;
+			productReference = AAAA01 /* VinylVault.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		GG0001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					EE0001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = FF0002 /* Build configuration list for PBXProject "VinylVault" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				"zh-Hans",
+			);
+			mainGroup = DD0001;
+			productRefGroup = DD0003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				EE0001 /* VinylVault */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		EE0003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA0022 /* Assets.xcassets in Resources */,
+				AA0026 /* Localizable.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		EE0002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA0001 /* VinylVaultApp.swift in Sources */,
+				AA0002 /* ContentView.swift in Sources */,
+				AA0003 /* HomeView.swift in Sources */,
+				AA0004 /* CollectionView.swift in Sources */,
+				AA0005 /* ListsView.swift in Sources */,
+				AA0006 /* SearchView.swift in Sources */,
+				AA0007 /* AddRecordView.swift in Sources */,
+				AA0008 /* BarcodeScannerView.swift in Sources */,
+				AA0009 /* ManualSearchView.swift in Sources */,
+				AA0010 /* SearchResultsView.swift in Sources */,
+				AA0011 /* AddCopyView.swift in Sources */,
+				AA0012 /* ReleaseDetailView.swift in Sources */,
+				AA0013 /* EditCopyView.swift in Sources */,
+				AA0014 /* ListDetailView.swift in Sources */,
+				AA0015 /* Release.swift in Sources */,
+				AA0016 /* Copy.swift in Sources */,
+				AA0017 /* RecordList.swift in Sources */,
+				AA0018 /* DiscogsService.swift in Sources */,
+				AA0019 /* WikipediaService.swift in Sources */,
+				AA0020 /* StreamingLinkService.swift in Sources */,
+				AA0021 /* ImageCache.swift in Sources */,
+				AA0023 /* AppState.swift in Sources */,
+				AA0024 /* AlbumArtworkService.swift in Sources */,
+				AA0025 /* SettingsView.swift in Sources */,
+				AA0027 /* ImageGalleryView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		HH0001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		HH0002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		HH0003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4CXWTHNN9Z;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VinylVault/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_NSCameraUsageDescription = "VinylVault needs camera access to scan vinyl barcodes";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.secondspin-ey.app";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		HH0004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4CXWTHNN9Z;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VinylVault/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_NSCameraUsageDescription = "VinylVault needs camera access to scan vinyl barcodes";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.secondspin-ey.app";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		FF0001 /* Build configuration list for PBXNativeTarget "VinylVault" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				HH0003 /* Debug */,
+				HH0004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FF0002 /* Build configuration list for PBXProject "VinylVault" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				HH0001 /* Debug */,
+				HH0002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin PBXVariantGroup section */
+		BB0027 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				BB0028 /* en */,
+				BB0029 /* zh-Hans */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+	};
+	rootObject = GG0001 /* Project object */;
+}

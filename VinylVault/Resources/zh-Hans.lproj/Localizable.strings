@@ -1,0 +1,83 @@
+/* Tab Bar */
+"Home" = "首页";
+"Collection" = "收藏";
+"Lists" = "列表";
+"Settings" = "设置";
+
+/* Settings */
+"Appearance" = "外观";
+"System" = "跟随系统";
+"Light" = "浅色";
+"Dark" = "深色";
+"Choose how the app looks" = "选择应用的外观";
+
+"Data Sync" = "数据同步";
+"iCloud Sync" = "iCloud 同步";
+"Syncing with iCloud" = "正在与 iCloud 同步";
+"Sync your collection, lists, and preferences across all your devices using iCloud" = "使用 iCloud 在所有设备上同步您的收藏、列表和偏好设置";
+
+"Language" = "语言";
+"Choose your preferred language" = "选择您偏好的语言";
+"The app will restart to apply the new language." = "切换语言后应用将重启。";
+
+/* Image Cache Settings */
+"Image Cache" = "图片缓存";
+"Max Cache Size" = "最大缓存大小";
+"Current Usage" = "当前占用";
+"Clear Image Cache" = "清除图片缓存";
+"Cached images are stored on disk for faster loading. Clearing the cache frees up storage." = "图片缓存存储在磁盘上以加快加载速度。清除缓存可释放存储空间。";
+"Clear" = "清除";
+"This will delete all cached images. They will be re-downloaded as needed." = "这将删除所有已缓存的图片，按需时会重新下载。";
+
+/* Language Change Alert */
+"Change Language" = "切换语言";
+"Switch to %@ and restart the app to apply the change?" = "切换到%@并重启应用以应用更改？";
+"Restart App" = "重启应用";
+
+"About" = "关于";
+"Version" = "版本";
+"Build" = "构建版本";
+
+/* iCloud Alerts */
+"iCloud Status" = "iCloud 状态";
+"iCloud is available and ready to sync your data." = "iCloud 可用，已准备好同步您的数据。";
+"No iCloud account found. Please sign in to iCloud in Settings to enable sync." = "未找到 iCloud 账户。请在设置中登录 iCloud 以启用同步。";
+"iCloud access is restricted on this device." = "此设备上的 iCloud 访问受限。";
+"Could not determine iCloud status. Please check your connection." = "无法确定 iCloud 状态。请检查您的连接。";
+"iCloud is temporarily unavailable. Please try again later." = "iCloud 暂时不可用。请稍后再试。";
+"Unknown iCloud status." = "未知的 iCloud 状态。";
+
+/* Home Screen */
+"Album of the Day" = "今日专辑";
+"About" = "关于";
+"Read More" = "阅读更多";
+"Show Less" = "收起";
+"View Details" = "查看详情";
+"No Albums Yet" = "还没有专辑";
+"Add your first vinyl record to see\nyour Album of the Day" = "添加您的第一张黑胶唱片\n查看今日专辑";
+
+/* Collection */
+"My Collection" = "我的收藏";
+"No Records Yet" = "还没有唱片";
+"Start building your collection by\nadding your first vinyl record" = "添加您的第一张黑胶唱片\n开始建立您的收藏";
+"Sort By" = "排序方式";
+"Artist" = "艺术家";
+"Title" = "标题";
+"Year" = "年份";
+"Date Added" = "添加日期";
+"Filter by Genre" = "按风格筛选";
+"All Genres" = "所有风格";
+
+/* Detail View */
+"Tracklist" = "曲目列表";
+"Your Copies" = "您的副本";
+"Remove from Collection" = "从收藏中移除";
+"Remove Release" = "移除专辑";
+"This will remove the release and all copies from your collection." = "这将从您的收藏中移除该专辑及所有副本。";
+"Remove" = "移除";
+"Cancel" = "取消";
+
+/* Common */
+"OK" = "确定";
+"Search" = "搜索";
+"Search collection" = "搜索收藏";

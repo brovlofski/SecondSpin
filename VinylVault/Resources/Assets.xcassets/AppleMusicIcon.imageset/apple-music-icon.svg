@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 75 75">
+  <defs>
+    <linearGradient id="amGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FC5C7D;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#6A3093;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+  <rect width="75" height="75" rx="16.5" fill="url(#amGrad)"/>
+  <path fill="#FFFFFF" d="
+    M 54,19 L 29,26
+    L 29,49
+    C 28,47 26,46 23.5,46
+    C 19.4,46 16,49.4 16,53.5
+    C 16,57.6 19.4,61 23.5,61
+    C 27.6,61 31,57.6 31,53.5
+    L 31,34.5
+    L 52,28.5
+    L 52,43
+    C 51,41 49,40 46.5,40
+    C 42.4,40 39,43.4 39,47.5
+    C 39,51.6 42.4,55 46.5,55
+    C 50.6,55 54,51.6 54,47.5
+    L 54,19 Z
+  "/>
+</svg>

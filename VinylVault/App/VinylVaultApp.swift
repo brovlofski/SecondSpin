@@ -1,0 +1,110 @@
+//
+//  VinylVaultApp.swift
+//  VinylVault
+//
+//  Created by VinylVault Team
+//
+
+import SwiftUI
+import SwiftData
+
+@main
+struct VinylVaultApp: App {
+    let modelContainer: ModelContainer
+    @StateObject private var appState = AppState()
+
+    init() {
+        let schema = Schema([
+            Release.self,
+            Copy.self,
+            RecordList.self
+        ])
+
+        if let container = VinylVaultApp.makeContainer(schema: schema) {
+            modelContainer = container
+        } else {
+            fatalError("Could not initialize ModelContainer even after store reset.")
+        }
+    }
+
+    // MARK: - Container factory
+
+    private static func makeContainer(schema: Schema) -> ModelContainer? {
+        // First attempt – normal path (works for fresh installs & compatible schemas).
+        do {
+            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+            return try ModelContainer(for: schema, configurations: [config])
+        } catch {
+            print("⚠️ ModelContainer init failed: \(error)\nWiping persistent store and retrying…")
+        }
+
+        // Wipe the store, then try again.
+        wipeStore()
+
+        do {
+            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+            let container = try ModelContainer(for: schema, configurations: [config])
+            print("✅ ModelContainer recreated successfully after store wipe.")
+            return container
+        } catch {
+            print("❌ ModelContainer init still failed after store wipe: \(error)")
+            return nil
+        }
+    }
+
+    // MARK: - Store wipe
+
+    /// Recursively deletes every file that looks like a SwiftData / SQLite
+    /// persistent store under the app's Application Support directory.
+    /// SwiftData uses "default.store" / "default.store-wal" / "default.store-shm"
+    /// by default, but some setups produce ".sqlite" variants.
+    private static func wipeStore() {
+        let fm = FileManager.default
+        guard let appSupport = fm.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first else { return }
+
+        deleteStoreFiles(in: appSupport, fm: fm)
+    }
+
+    private static func deleteStoreFiles(in directory: URL, fm: FileManager) {
+        guard let items = try? fm.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: .skipsHiddenFiles
+        ) else { return }
+
+        for item in items {
+            let isDir = (try? item.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            if isDir {
+                // Recurse into sub-directories (SwiftData may nest under bundle ID folder)
+                deleteStoreFiles(in: item, fm: fm)
+            } else {
+                let name = item.lastPathComponent
+                let ext  = item.pathExtension          // "store", "sqlite", …
+                let storeExts  = ["store", "sqlite", "sqlite3"]
+                let storeSuffixes = ["-wal", "-shm", "-wal2", "-journal"]
+                if storeExts.contains(ext) || storeSuffixes.contains(where: { name.hasSuffix($0) }) {
+                    do {
+                        try fm.removeItem(at: item)
+                        print("  🗑 Deleted: \(item.path)")
+                    } catch {
+                        print("  ⚠️ Could not delete \(item.lastPathComponent): \(error)")
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Scene
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .modelContainer(modelContainer)
+                .environmentObject(appState)
+                .preferredColorScheme(nil) // Support system light/dark mode
+        }
+    }
+}

@@ -1,0 +1,83 @@
+/* Tab Bar */
+"Home" = "Home";
+"Collection" = "Collection";
+"Lists" = "Lists";
+"Settings" = "Settings";
+
+/* Settings */
+"Appearance" = "Appearance";
+"System" = "System";
+"Light" = "Light";
+"Dark" = "Dark";
+"Choose how the app looks" = "Choose how the app looks";
+
+"Data Sync" = "Data Sync";
+"iCloud Sync" = "iCloud Sync";
+"Syncing with iCloud" = "Syncing with iCloud";
+"Sync your collection, lists, and preferences across all your devices using iCloud" = "Sync your collection, lists, and preferences across all your devices using iCloud";
+
+"Language" = "Language";
+"Choose your preferred language" = "Choose your preferred language";
+"The app will restart to apply the new language." = "The app will restart to apply the new language.";
+
+/* Image Cache Settings */
+"Image Cache" = "Image Cache";
+"Max Cache Size" = "Max Cache Size";
+"Current Usage" = "Current Usage";
+"Clear Image Cache" = "Clear Image Cache";
+"Cached images are stored on disk for faster loading. Clearing the cache frees up storage." = "Cached images are stored on disk for faster loading. Clearing the cache frees up storage.";
+"Clear" = "Clear";
+"This will delete all cached images. They will be re-downloaded as needed." = "This will delete all cached images. They will be re-downloaded as needed.";
+
+/* Language Change Alert */
+"Change Language" = "Change Language";
+"Switch to %@ and restart the app to apply the change?" = "Switch to %@ and restart the app to apply the change?";
+"Restart App" = "Restart App";
+
+"About" = "About";
+"Version" = "Version";
+"Build" = "Build";
+
+/* iCloud Alerts */
+"iCloud Status" = "iCloud Status";
+"iCloud is available and ready to sync your data." = "iCloud is available and ready to sync your data.";
+"No iCloud account found. Please sign in to iCloud in Settings to enable sync." = "No iCloud account found. Please sign in to iCloud in Settings to enable sync.";
+"iCloud access is restricted on this device." = "iCloud access is restricted on this device.";
+"Could not determine iCloud status. Please check your connection." = "Could not determine iCloud status. Please check your connection.";
+"iCloud is temporarily unavailable. Please try again later." = "iCloud is temporarily unavailable. Please try again later.";
+"Unknown iCloud status." = "Unknown iCloud status.";
+
+/* Home Screen */
+"Album of the Day" = "Album of the Day";
+"About" = "About";
+"Read More" = "Read More";
+"Show Less" = "Show Less";
+"View Details" = "View Details";
+"No Albums Yet" = "No Albums Yet";
+"Add your first vinyl record to see\nyour Album of the Day" = "Add your first vinyl record to see\nyour Album of the Day";
+
+/* Collection */
+"My Collection" = "My Collection";
+"No Records Yet" = "No Records Yet";
+"Start building your collection by\nadding your first vinyl record" = "Start building your collection by\nadding your first vinyl record";
+"Sort By" = "Sort By";
+"Artist" = "Artist";
+"Title" = "Title";
+"Year" = "Year";
+"Date Added" = "Date Added";
+"Filter by Genre" = "Filter by Genre";
+"All Genres" = "All Genres";
+
+/* Detail View */
+"Tracklist" = "Tracklist";
+"Your Copies" = "Your Copies";
+"Remove from Collection" = "Remove from Collection";
+"Remove Release" = "Remove Release";
+"This will remove the release and all copies from your collection." = "This will remove the release and all copies from your collection.";
+"Remove" = "Remove";
+"Cancel" = "Cancel";
+
+/* Common */
+"OK" = "OK";
+"Search" = "Search";
+"Search collection" = "Search collection";
