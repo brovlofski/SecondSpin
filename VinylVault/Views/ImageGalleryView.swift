@@ -51,7 +51,7 @@ struct ImageGalleryView: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
             .ignoresSafeArea()
             .offset(y: dismissDragOffset)
-            .opacity(isDismissing ? 0 : 1 - abs(dismissDragOffset) / 400)
+            .opacity(isDismissing ? 0 : (1 - abs(dismissDragOffset) / 400))
             .simultaneousGesture(swipeToDismissGesture)
 
             // Top chrome: close button + counter
