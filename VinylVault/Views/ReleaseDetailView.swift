@@ -80,13 +80,18 @@ struct ReleaseDetailView: View {
                         .font(.title3)
                         .foregroundColor(.secondary)
                     
+                    // Line 1: Format and Year
                     HStack(spacing: 4) {
                         Text(release.fullFormatDisplay)
                         if release.year > 0 {
-                            Text("·")
                             Text(String(release.year))
                         }
-                        Text("·")
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    
+                    // Line 2: Label, Catalog Number, Country
+                    HStack(spacing: 4) {
                         Text(release.label)
                             .lineLimit(1)
                             .truncationMode(.tail)
