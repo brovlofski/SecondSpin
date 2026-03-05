@@ -263,6 +263,7 @@ struct ReleaseDetailView: View {
                 }
             }
             .padding()
+            .padding(.bottom, 32)   // clear tab bar + safe area
         }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
