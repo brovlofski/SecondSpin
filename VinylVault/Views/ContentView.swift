@@ -28,6 +28,8 @@ struct ContentView: View {
             Color.clear
                 .tabItem {
                     Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.green)
                 }
                 .tag(2)
 
