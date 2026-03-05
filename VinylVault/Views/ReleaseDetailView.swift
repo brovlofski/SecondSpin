@@ -274,11 +274,13 @@ struct ReleaseDetailView: View {
         Task {
             async let descriptionResult = WikipediaService.shared.fetchAlbumDescription(
                 albumTitle: release.title,
-                artist: release.artist
+                artist: release.artist,
+                year: release.year > 0 ? release.year : nil
             )
             async let urlResult = WikipediaService.shared.fetchAlbumPageURL(
                 albumTitle: release.title,
-                artist: release.artist
+                artist: release.artist,
+                year: release.year > 0 ? release.year : nil
             )
 
             let description = try? await descriptionResult
