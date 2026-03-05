@@ -19,7 +19,6 @@ struct ReleaseDetailView: View {
     @State private var wikipediaURL: URL?
     @State private var isLoadingWikipedia = false
     @State private var showFullDescription = false
-    @State private var showEditCopy = false
     @State private var selectedCopy: Copy?
     @State private var showGallery = false
     @State private var galleryStartIndex = 0
@@ -223,7 +222,6 @@ struct ReleaseDetailView: View {
                             CopyRowView(copy: copy)
                                 .onTapGesture {
                                     selectedCopy = copy
-                                    showEditCopy = true
                                 }
                         }
                     }
@@ -259,10 +257,8 @@ struct ReleaseDetailView: View {
         } message: {
             Text("This will remove the release and all copies from your collection.")
         }
-        .sheet(isPresented: $showEditCopy) {
-            if let copy = selectedCopy {
-                EditCopyView(copy: copy)
-            }
+        .sheet(item: $selectedCopy) { copy in
+            EditCopyView(copy: copy)
         }
         .fullScreenCover(isPresented: $showGallery) {
             ImageGalleryView(
