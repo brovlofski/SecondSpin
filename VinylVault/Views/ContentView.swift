@@ -59,24 +59,6 @@ struct ContentView: View {
             appearanceMode == 1 ? .light : (appearanceMode == 2 ? .dark : nil)
         )
         .overlay(alignment: .bottom) {
-            // Floating "+" button centred above the tab bar
-            Button {
-                appState.showAddRecord = true
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: 60, height: 60)
-                        .shadow(color: .black.opacity(0.25), radius: 10, x: 0, y: 4)
-                    Image(systemName: "plus")
-                        .font(.system(size: 26, weight: .semibold))
-                        .foregroundColor(.white)
-                }
-            }
-            // 49 pt tab bar; place button centre at ~same height as tab icons
-            .padding(.bottom, 28)
-        }
-        .overlay(alignment: .bottom) {
             // Toast overlay
             if let message = appState.toastMessage {
                 ToastView(message: message)
