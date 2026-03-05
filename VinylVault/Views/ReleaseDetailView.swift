@@ -82,8 +82,10 @@ struct ReleaseDetailView: View {
                     
                     HStack(spacing: 4) {
                         Text(release.fullFormatDisplay)
-                        Text("·")
-                        Text(String(release.year))
+                        if release.year > 0 {
+                            Text("·")
+                            Text(String(release.year))
+                        }
                         Text("·")
                         Text(release.label)
                             .lineLimit(1)
@@ -164,18 +166,6 @@ struct ReleaseDetailView: View {
                                     }
                                 }
                             }
-                            if let wikiURL = wikipediaURL {
-                                Link(destination: wikiURL) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(Color(.systemGray5))
-                                            .frame(width: 28, height: 28)
-                                        Text("W")
-                                            .font(.system(size: 13, weight: .bold, design: .serif))
-                                            .foregroundColor(.primary)
-                                    }
-                                }
-                            }
                         }
                     }
 
@@ -217,14 +207,29 @@ struct ReleaseDetailView: View {
                             .foregroundColor(.secondary)
                             .lineLimit(showFullDescription ? nil : 5)
                         
-                        Button(action: {
-                            withAnimation {
-                                showFullDescription.toggle()
+                        HStack(alignment: .center) {
+                            Button(action: {
+                                withAnimation {
+                                    showFullDescription.toggle()
+                                }
+                            }) {
+                                Text(showFullDescription ? "Show Less" : "Read More")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
                             }
-                        }) {
-                            Text(showFullDescription ? "Show Less" : "Read More")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
+                            if let wikiURL = wikipediaURL {
+                                Spacer()
+                                Link(destination: wikiURL) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color(.systemGray5))
+                                            .frame(width: 28, height: 28)
+                                        Text("W")
+                                            .font(.system(size: 13, weight: .bold, design: .serif))
+                                            .foregroundColor(.primary)
+                                    }
+                                }
+                            }
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

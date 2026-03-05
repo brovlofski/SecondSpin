@@ -225,11 +225,17 @@ struct GridItemView: View {
                 .foregroundColor(.secondary)
                 .lineLimit(1)
             
-            // Format and Year
+            // Format, Year, Country
             HStack(spacing: 4) {
                 Text(release.fullFormatDisplay)
-                Text("·")
-                Text(release.year.formatted(.number.grouping(.never)))
+                if release.year > 0 {
+                    Text("·")
+                    Text(release.year.formatted(.number.grouping(.never)))
+                }
+                if let country = release.country {
+                    Text("·")
+                    Text(country)
+                }
             }
             .font(.caption)
             .foregroundColor(.secondary)
@@ -274,9 +280,15 @@ struct ListItemView: View {
                     .lineLimit(1)
 
                 HStack(spacing: 4) {
-                    Text(release.year.formatted(.number.grouping(.never)))
-                    Text("·")
+                    if release.year > 0 {
+                        Text(release.year.formatted(.number.grouping(.never)))
+                        Text("·")
+                    }
                     Text(release.fullFormatDisplay)
+                    if let country = release.country {
+                        Text("·")
+                        Text(country)
+                    }
                     Text("·")
                     Text(release.label)
                         .lineLimit(1)

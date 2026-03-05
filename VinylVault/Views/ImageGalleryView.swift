@@ -1,8 +1,8 @@
-//
 //  ImageGalleryView.swift
 //  VinylVault
 //
-//  Full-screen swipeable image gallery with pinch-to-zoom and double-tap zoom
+//  Full-screen swipeable image gallery with pinch-to-zoom, double-tap zoom,
+//  and swipe up/down to dismiss.
 //
 
 import SwiftUI
@@ -17,6 +17,12 @@ struct ImageGalleryView: View {
     @State private var currentIndex: Int
     @State private var showChrome = true
 
+    // Swipe-to-dismiss state
+    @State private var dismissDragOffset: CGFloat = 0
+    @State private var isDismissing = false
+    // Track zoom level of the current cell so we skip dismiss when zoomed
+    @State private var currentCellZoom: CGFloat = 1
+
     init(imageURLs: [String], initialIndex: Int = 0) {
         self.imageURLs = imageURLs
         self.initialIndex = initialIndex
@@ -27,20 +33,29 @@ struct ImageGalleryView: View {
         ZStack(alignment: .top) {
             Color.black.ignoresSafeArea()
 
-            // Paging TabView
+            // Paging TabView — offset vertically while being dragged to dismiss
             TabView(selection: $currentIndex) {
                 ForEach(imageURLs.indices, id: \.self) { idx in
-                    ZoomableImageCell(urlString: imageURLs[idx], onTap: {
-                        withAnimation(.easeInOut(duration: 0.2)) { showChrome.toggle() }
-                    })
+                    ZoomableImageCell(
+                        urlString: imageURLs[idx],
+                        onTap: {
+                            withAnimation(.easeInOut(duration: 0.2)) { showChrome.toggle() }
+                        },
+                        onScaleChange: { scale in
+                            if currentIndex == idx { currentCellZoom = scale }
+                        }
+                    )
                     .tag(idx)
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .ignoresSafeArea()
+            .offset(y: dismissDragOffset)
+            .opacity(isDismissing ? 0 : 1 - abs(dismissDragOffset) / 400)
+            .simultaneousGesture(swipeToDismissGesture)
 
             // Top chrome: close button + counter
-            if showChrome {
+            if showChrome && !isDismissing {
                 VStack(spacing: 0) {
                     HStack {
                         Button {
@@ -84,10 +99,49 @@ struct ImageGalleryView: View {
                         .padding(.bottom, 24)
                     }
                 }
+                .offset(y: dismissDragOffset)
                 .transition(.opacity)
             }
         }
         .statusBar(hidden: !showChrome)
+    }
+
+    // MARK: - Swipe to Dismiss Gesture
+
+    private var swipeToDismissGesture: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onChanged { val in
+                guard !isDismissing, currentCellZoom <= 1 else { return }
+                // Only respond to predominantly vertical drags
+                guard abs(val.translation.height) > abs(val.translation.width) else { return }
+                withAnimation(.interactiveSpring()) {
+                    dismissDragOffset = val.translation.height
+                }
+            }
+            .onEnded { val in
+                guard !isDismissing, currentCellZoom <= 1 else { return }
+                guard abs(val.translation.height) > abs(val.translation.width) else {
+                    withAnimation(.spring(response: 0.3)) { dismissDragOffset = 0 }
+                    return
+                }
+                let shouldDismiss = abs(val.translation.height) > 80 ||
+                                    abs(val.predictedEndTranslation.height) > 300
+                if shouldDismiss {
+                    isDismissing = true
+                    let direction: CGFloat = val.translation.height > 0 ? 1 : -1
+                    withAnimation(.easeOut(duration: 0.22)) {
+                        dismissDragOffset = direction * 700
+                    }
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(220))
+                        dismiss()
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        dismissDragOffset = 0
+                    }
+                }
+            }
     }
 }
 
@@ -97,6 +151,7 @@ struct ImageGalleryView: View {
 private struct ZoomableImageCell: View {
     let urlString: String
     let onTap: () -> Void
+    var onScaleChange: ((CGFloat) -> Void)? = nil
 
     @State private var scale: CGFloat = 1
     @State private var lastScale: CGFloat = 1
@@ -144,6 +199,7 @@ private struct ZoomableImageCell: View {
             .onChanged { val in
                 let proposed = lastScale * val
                 scale = min(max(proposed, minScale), maxScale)
+                onScaleChange?(scale)
             }
             .onEnded { _ in
                 lastScale = scale
@@ -151,13 +207,11 @@ private struct ZoomableImageCell: View {
                     withAnimation(.spring()) { scale = minScale; offset = .zero }
                     lastScale = minScale; lastOffset = .zero
                 }
+                onScaleChange?(scale)
             }
     }
 
     private func dragGesture(geo: GeometryProxy) -> some Gesture {
-        // When not zoomed (scale == 1) use an astronomically large minimum distance so the
-        // gesture never activates and TabView's built-in page-swipe can take over.
-        // When zoomed, use distance 1 so panning starts immediately.
         DragGesture(minimumDistance: scale > 1 ? 1 : 100_000)
             .onChanged { val in
                 guard scale > 1 else { return }
@@ -184,6 +238,7 @@ private struct ZoomableImageCell: View {
                         scale = 2.5; lastScale = 2.5
                     }
                 }
+                onScaleChange?(scale)
             }
     }
 

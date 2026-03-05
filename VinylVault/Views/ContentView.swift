@@ -24,12 +24,10 @@ struct ContentView: View {
                 }
                 .tag(1)
 
-            // Center Add Button
+            // Center placeholder (invisible — actual button is overlaid below)
             Color.clear
                 .tabItem {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 32))
-                        .foregroundColor(.accentColor)
+                    Label("Add", systemImage: "plus.circle.fill")
                 }
                 .tag(2)
 
@@ -60,6 +58,24 @@ struct ContentView: View {
         .preferredColorScheme(
             appearanceMode == 1 ? .light : (appearanceMode == 2 ? .dark : nil)
         )
+        .overlay(alignment: .bottom) {
+            // Floating "+" button centred above the tab bar
+            Button {
+                appState.showAddRecord = true
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.primary)
+                        .frame(width: 60, height: 60)
+                        .shadow(color: .black.opacity(0.25), radius: 10, x: 0, y: 4)
+                    Image(systemName: "plus")
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundColor(Color(.systemBackground))
+                }
+            }
+            // 49 pt tab bar; place button centre at ~same height as tab icons
+            .padding(.bottom, 28)
+        }
         .overlay(alignment: .bottom) {
             // Toast overlay
             if let message = appState.toastMessage {

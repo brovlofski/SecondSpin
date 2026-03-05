@@ -150,11 +150,19 @@ struct HomeView: View {
                         .foregroundColor(.secondary)
                     
                     HStack(spacing: 4) {
-                        Text(String(album.year))
-                        Text("·")
+                        if album.year > 0 {
+                            Text(String(album.year))
+                            Text("·")
+                        }
                         Text(album.fullFormatDisplay)
-                        Text("·")
-                        Text(album.genres.first ?? "Unknown")
+                        if let country = album.country {
+                            Text("·")
+                            Text(country)
+                        }
+                        if let genre = album.genres.first {
+                            Text("·")
+                            Text(genre)
+                        }
                     }
                     .font(.caption)
                     .foregroundColor(.secondary)
