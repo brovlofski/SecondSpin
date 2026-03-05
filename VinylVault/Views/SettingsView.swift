@@ -83,6 +83,13 @@ struct SettingsView: View {
     @State private var importError: String? = nil
     @State private var showImportError = false
 
+    // MARK: Sync state
+    @State private var isSyncing = false
+    @State private var syncProgress: Double = 0
+    @State private var syncStatus: String = ""
+    @State private var showSyncComplete = false
+    @State private var syncResult: String = ""
+
     private var appLanguage: AppLanguage {
         get { AppLanguage(rawValue: appLanguageRaw) ?? .english }
         set { appLanguageRaw = newValue.rawValue }
@@ -108,6 +115,44 @@ struct SettingsView: View {
 
                 // ── iCloud Sync ───────────────────────────────────────────────
                 Section {
+                    // Sync Library button
+                    Button {
+                        syncLibrary()
+                    } label: {
+                        HStack {
+                            if isSyncing {
+                                ProgressView()
+                                    .padding(.trailing, 4)
+                            } else {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .foregroundColor(.accentColor)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(NSLocalizedString("Sync Library", comment: ""))
+                                if isSyncing {
+                                    Text(syncStatus)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Text(
+                                        String(
+                                            format: NSLocalizedString("Update info for %d releases", comment: ""),
+                                            releases.count
+                                        )
+                                    )
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
+                    .disabled(isSyncing || releases.isEmpty)
+                    
+                    if isSyncing {
+                        ProgressView(value: syncProgress, total: 1.0)
+                    }
+                    
+                    // iCloud Sync (coming soon)
                     HStack {
                         Image(systemName: "icloud.fill")
                             .foregroundColor(.blue)
@@ -132,7 +177,7 @@ struct SettingsView: View {
                     Label(NSLocalizedString("Data Sync", comment: ""), systemImage: "arrow.triangle.2.circlepath")
                 } footer: {
                     Text(NSLocalizedString(
-                        "iCloud sync will allow you to access your collection on all your devices. This feature is coming in a future update.",
+                        "Sync Library updates all releases with the latest data from Discogs (excluding images).",
                         comment: ""))
                 }
 
@@ -314,6 +359,11 @@ struct SettingsView: View {
             } message: {
                 Text(importError ?? NSLocalizedString("An unknown error occurred.", comment: ""))
             }
+            .alert(NSLocalizedString("Sync Complete", comment: ""), isPresented: $showSyncComplete) {
+                Button(NSLocalizedString("OK", comment: ""), role: .cancel) {}
+            } message: {
+                Text(syncResult)
+            }
 
             // ── Share sheet (export) ──────────────────────────────────────────
             .sheet(isPresented: $showShareSheet) {
@@ -407,6 +457,96 @@ struct SettingsView: View {
         UserDefaults.standard.set([language.rawValue], forKey: "AppleLanguages")
         UserDefaults.standard.synchronize()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { exit(0) }
+    }
+
+    // MARK: - Sync Library
+
+    private func syncLibrary() {
+        guard !releases.isEmpty else { return }
+        
+        isSyncing = true
+        syncProgress = 0
+        syncStatus = NSLocalizedString("Starting sync...", comment: "")
+        
+        Task.detached(priority: .userInitiated) {
+            var updatedCount = 0
+            var errorCount = 0
+            let totalReleases = await MainActor.run { releases.count }
+            
+            for (index, release) in await MainActor.run({ releases.enumerated() }) {
+                // Update progress
+                await MainActor.run {
+                    syncProgress = Double(index) / Double(totalReleases)
+                    syncStatus = String(
+                        format: NSLocalizedString("Syncing %d of %d...", comment: ""),
+                        index + 1,
+                        totalReleases
+                    )
+                }
+                
+                do {
+                    // Fetch latest details from Discogs
+                    let details = try await DiscogsService.shared.getReleaseDetails(releaseId: release.discogsId)
+                    
+                    // Update release with latest data (excluding images)
+                    await MainActor.run {
+                        let artist = details.artists.first?.name ?? "Unknown Artist"
+                        
+                        release.title = details.title
+                        release.artist = artist
+                        release.year = details.year ?? 0
+                        release.label = details.labels.first?.name ?? "Unknown Label"
+                        release.catalogNumber = details.labels.first?.catno
+                        release.genres = details.genres ?? []
+                        release.styles = details.styles ?? []
+                        release.format = details.formats?.first?.name ?? "LP"
+                        release.formatDescriptions = details.formats?.first?.descriptions ?? []
+                        release.country = details.country
+                        release.barcode = details.identifiers?.first(where: { $0.type == "Barcode" })?.value
+                        release.tracklist = details.tracklist?.map {
+                            Track(position: $0.position, title: $0.title, duration: $0.duration)
+                        } ?? []
+                        
+                        updatedCount += 1
+                    }
+                    
+                    // Small delay to respect API rate limits
+                    try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+                    
+                } catch {
+                    print("Failed to sync release \(release.discogsId): \(error)")
+                    errorCount += 1
+                }
+            }
+            
+            // Save changes
+            await MainActor.run {
+                do {
+                    try modelContext.save()
+                } catch {
+                    print("Failed to save sync changes: \(error)")
+                }
+                
+                // Show completion
+                syncProgress = 1.0
+                isSyncing = false
+                
+                if errorCount == 0 {
+                    syncResult = String(
+                        format: NSLocalizedString("Successfully updated %d releases", comment: ""),
+                        updatedCount
+                    )
+                } else {
+                    syncResult = String(
+                        format: NSLocalizedString("Updated %d releases. %d failed.", comment: ""),
+                        updatedCount,
+                        errorCount
+                    )
+                }
+                
+                showSyncComplete = true
+            }
+        }
     }
 }
 
