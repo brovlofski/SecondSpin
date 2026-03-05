@@ -2,14 +2,23 @@
 //  WikipediaService.swift
 //  VinylVault
 //
-//  Enhanced Wikipedia integration with Wikidata album validation.
-//  Pipeline: search → score → fetch Wikidata ID → validate P31 (instance of album)
-//            → fetch extract → cache result
+//  Wikipedia album resolution with Wikidata validation.
+//
+//  Resolution pipeline:
+//    Phase 1 – Predicted titles (fast, no search query):
+//      1. Generate 3 candidate page titles using common Wikipedia album naming patterns.
+//      2. Check each page exists via action=query&titles=.
+//      3. Validate via Wikidata (P31 instance-of, P1476 title, P175 performer).
+//      4. If any passes → fetch extract and return immediately.
+//    Phase 2 – Fallback search (only runs if Phase 1 fails):
+//      5. Search Wikipedia with "<title> <artist> album" (limit 10).
+//      6. Rank hits, validate top-3 via same Wikidata checks.
+//      7. Return first valid result.
 //
 
 import Foundation
 
-// MARK: - Public result type
+// MARK: - Public result
 
 struct WikipediaAlbumResult {
     let pageTitle: String
@@ -18,7 +27,7 @@ struct WikipediaAlbumResult {
     let pageURL: URL?
 }
 
-// MARK: - Error
+// MARK: - Errors
 
 enum WikipediaError: Error {
     case invalidURL
@@ -27,42 +36,31 @@ enum WikipediaError: Error {
     case decodingError(Error)
 }
 
-// MARK: - Private API response models
+// MARK: - Wikipedia response models
 
 private struct WPSearchResponse: Decodable {
     let query: Query?
-    struct Query: Decodable {
-        let search: [Hit]
-    }
-    struct Hit: Decodable {
-        let title: String
-        let pageid: Int
-    }
+    struct Query: Decodable { let search: [Hit] }
+    struct Hit: Decodable { let title: String; let pageid: Int }
 }
 
 private struct WPPagePropsResponse: Decodable {
     let query: Query?
-    struct Query: Decodable {
-        let pages: [String: Page]
-    }
+    struct Query: Decodable { let pages: [String: Page] }
     struct Page: Decodable {
         let pageid: Int?
         let title: String
         let pageprops: Props?
-    }
-    struct Props: Decodable {
-        let wikibaseItem: String?
-        enum CodingKeys: String, CodingKey {
-            case wikibaseItem = "wikibase_item"
+        struct Props: Decodable {
+            let wikibaseItem: String?
+            enum CodingKeys: String, CodingKey { case wikibaseItem = "wikibase_item" }
         }
     }
 }
 
 private struct WPExtractResponse: Decodable {
     let query: Query?
-    struct Query: Decodable {
-        let pages: [String: Page]
-    }
+    struct Query: Decodable { let pages: [String: Page] }
     struct Page: Decodable {
         let pageid: Int?
         let title: String
@@ -71,35 +69,50 @@ private struct WPExtractResponse: Decodable {
     }
 }
 
-private struct WikidataEntityResponse: Decodable {
-    let entities: [String: Entity]
+// MARK: - Wikidata models (wbgetentities API)
 
-    struct Entity: Decodable {
-        let claims: [String: [Claim]]?
-    }
+private struct WDGetEntitiesResponse: Decodable {
+    let entities: [String: WDEntity]
+}
 
-    struct Claim: Decodable {
-        let mainsnak: Mainsnak
-    }
+private struct WDEntity: Decodable {
+    let id: String?
+    let labels: [String: WDLabel]?
+    let claims: [String: [WDClaim]]?
+    var englishLabel: String? { labels?["en"]?.value }
+}
 
-    struct Mainsnak: Decodable {
-        let datavalue: DataValue?
-    }
+private struct WDLabel: Decodable {
+    let language: String
+    let value: String
+}
 
-    struct DataValue: Decodable {
-        let value: EntityValue?
-        let type: String?
-    }
+private struct WDClaim: Decodable {
+    let mainsnak: WDMainsnak
+}
 
-    // Wikidata entity values are dicts; plain string values are ignored here
-    struct EntityValue: Decodable {
-        let id: String? // e.g. "Q482994"
-        init(from decoder: Decoder) throws {
-            let c = try? decoder.container(keyedBy: CodingKeys.self)
-            id = try? c?.decode(String.self, forKey: .id)
-        }
-        enum CodingKeys: String, CodingKey { case id }
+private struct WDMainsnak: Decodable {
+    let datavalue: WDDataValue?
+}
+
+private struct WDDataValue: Decodable {
+    let type: String?
+    let value: WDValue?
+}
+
+/// Handles both `wikibase-entityid` (has `id`) and `monolingualtext` (has `text`+`language`).
+private struct WDValue: Decodable {
+    let id: String?
+    let text: String?
+    let language: String?
+
+    init(from decoder: Decoder) throws {
+        let c = try? decoder.container(keyedBy: CodingKeys.self)
+        id       = try? c?.decode(String.self, forKey: .id)
+        text     = try? c?.decode(String.self, forKey: .text)
+        language = try? c?.decode(String.self, forKey: .language)
     }
+    enum CodingKeys: String, CodingKey { case id, text, language }
 }
 
 // MARK: - Service
@@ -107,10 +120,10 @@ private struct WikidataEntityResponse: Decodable {
 class WikipediaService {
     static let shared = WikipediaService()
 
-    private let wpBase    = "https://en.wikipedia.org/w/api.php"
-    private let wdBase    = "https://www.wikidata.org/wiki/Special:EntityData"
+    private let wpBase = "https://en.wikipedia.org/w/api.php"
+    private let wdAPI  = "https://www.wikidata.org/w/api.php"
 
-    // Wikidata Q-IDs that represent music-album types (P31 values)
+    /// Wikidata Q-IDs accepted for P31 (instance of)
     private let albumQIDs: Set<String> = [
         "Q482994",    // album
         "Q208569",    // studio album
@@ -118,141 +131,248 @@ class WikipediaService {
         "Q1194816",   // live album
         "Q169930",    // EP
         "Q189553",    // soundtrack album
-        "Q105543609", // music album (broader)
+        "Q105543609", // music album
         "Q3983927",   // demo album
         "Q220898",    // box set
         "Q592156",    // mixtape
         "Q1542673",   // single
     ]
 
-    // In-memory cache keyed by "lowercasedTitle|lowercasedArtist"
     private var cache: [String: WikipediaAlbumResult] = [:]
     private let cacheQueue = DispatchQueue(label: "wiki.cache", attributes: .concurrent)
 
     private init() {}
 
-    // MARK: - Public API (backward compatible + optional year)
+    // MARK: - Public API (backward compatible)
 
     func fetchAlbumDescription(albumTitle: String, artist: String, year: Int? = nil) async throws -> String {
-        let result = try await resolveValidatedPage(albumTitle: albumTitle, artist: artist, year: year)
-        return result.extract
+        try await resolveValidatedPage(albumTitle: albumTitle, artist: artist, year: year).extract
     }
 
     func fetchAlbumPageURL(albumTitle: String, artist: String, year: Int? = nil) async -> URL? {
-        return try? await resolveValidatedPage(albumTitle: albumTitle, artist: artist, year: year).pageURL
+        try? await resolveValidatedPage(albumTitle: albumTitle, artist: artist, year: year).pageURL
     }
 
-    // MARK: - Pipeline
+    // MARK: - Main pipeline
 
     private func resolveValidatedPage(albumTitle: String, artist: String, year: Int?) async throws -> WikipediaAlbumResult {
         let key = "\(albumTitle.lowercased())|\(artist.lowercased())"
         if let cached = cacheQueue.sync(execute: { cache[key] }) { return cached }
 
-        // Prioritised query list (Steps 1 & 9)
-        var queries: [String] = [
+        // ── Phase 1: Try predicted page titles ──────────────────────────────────
+        for predicted in predictedTitles(albumTitle: albumTitle, artist: artist) {
+            guard await checkPageExists(predicted) else { continue }
+            if let result = try? await validateAndFetch(pageTitle: predicted,
+                                                        albumTitle: albumTitle,
+                                                        artist: artist) {
+                store(result, key: key); return result
+            }
+        }
+
+        // ── Phase 2: Fallback to Wikipedia search ────────────────────────────────
+        let queries: [String] = [
             "\(albumTitle) \(artist) album",
             "\(albumTitle) \(artist)",
+            "\(albumTitle) album",
         ]
-        if let y = year, y > 0 {
-            queries.append("\(albumTitle) \(y) album")
-        }
-        queries.append("\(albumTitle) album")
-        queries.append(albumTitle)
-
         for query in queries {
-            if let result = try? await tryQuery(query, albumTitle: albumTitle, artist: artist) {
-                cacheQueue.async(flags: .barrier) { [weak self] in self?.cache[key] = result }
-                return result
+            if let result = try? await searchAndValidate(query: query,
+                                                         albumTitle: albumTitle,
+                                                         artist: artist) {
+                store(result, key: key); return result
             }
         }
 
         throw WikipediaError.noResults
     }
 
-    /// Search → score → validate top candidates
-    private func tryQuery(_ query: String, albumTitle: String, artist: String) async throws -> WikipediaAlbumResult {
-        let hits = try await searchWikipedia(query: query)
+    // MARK: - Phase 1: Predicted title generation
+
+    /// Returns candidate page titles in priority order.
+    private func predictedTitles(albumTitle: String, artist: String) -> [String] {
+        [
+            "\(albumTitle) (\(artist) album)",   // "Music (Madonna album)"
+            "\(albumTitle) (album)",              // "Rumours (album)"
+            albumTitle,                           // "Nevermind"
+        ]
+    }
+
+    // MARK: - Phase 1: Page existence check
+
+    /// Returns true when Wikipedia has a non-missing page for `title`.
+    private func checkPageExists(_ title: String) async -> Bool {
+        var c = URLComponents(string: wpBase)
+        c?.queryItems = [
+            URLQueryItem(name: "action",    value: "query"),
+            URLQueryItem(name: "titles",    value: title),
+            URLQueryItem(name: "format",    value: "json"),
+            URLQueryItem(name: "redirects", value: "1"),
+            URLQueryItem(name: "origin",    value: "*"),
+        ]
+        guard let url = c?.url,
+              let (data, _) = try? await URLSession.shared.data(from: url),
+              let resp = try? JSONDecoder().decode(WPPagePropsResponse.self, from: data),
+              let page = resp.query?.pages.values.first else { return false }
+        // Wikipedia marks missing pages with pageid = nil or negative key in the dict
+        return (page.pageid ?? -1) > 0
+    }
+
+    // MARK: - Phase 2: Search + validate
+
+    private func searchAndValidate(query: String, albumTitle: String, artist: String) async throws -> WikipediaAlbumResult {
+        let hits = try await searchWikipedia(query: query, limit: 10)
         guard !hits.isEmpty else { throw WikipediaError.noResults }
 
-        // Score and sort (Step 3)
         let ranked = hits
-            .map { ($0, score(hit: $0, albumTitle: albumTitle, artist: artist)) }
+            .map { ($0, score(title: $0.title, albumTitle: albumTitle, artist: artist)) }
             .sorted { $0.1 > $1.1 }
 
-        // Try top-3 candidates (Step 4 onward)
         for (hit, _) in ranked.prefix(3) {
-            if let result = try? await validateAndFetch(pageTitle: hit.title, artist: artist) {
+            if let result = try? await validateAndFetch(pageTitle: hit.title,
+                                                        albumTitle: albumTitle,
+                                                        artist: artist) {
                 return result
             }
         }
-
         throw WikipediaError.noResults
     }
 
-    // MARK: - Scoring heuristics (Step 3)
+    // MARK: - Validation + fetch
 
-    private func score(hit: WPSearchResponse.Hit, albumTitle: String, artist: String) -> Int {
-        var s = 0
-        let t = hit.title.lowercased()
-        let normArtist = artist.lowercased()
-        let normTitle  = albumTitle.lowercased()
+    /// Resolves a Wikidata entity for `pageTitle`, applies P31/P1476/P175 checks, then fetches extract.
+    private func validateAndFetch(pageTitle: String, albumTitle: String, artist: String) async throws -> WikipediaAlbumResult {
+        // 1. Get Wikidata entity ID from Wikipedia page props
+        let wikidataID = try? await fetchWikidataID(pageTitle: pageTitle)
 
-        // Positive: article is obviously an album page
-        if t.contains("(album)")      { s += 10 }
-        if t.contains("(ep)")         { s += 8  }
-        if t.contains("(soundtrack)") { s += 6  }
-        if t.contains("(single)")     { s += 3  }
+        if let wdID = wikidataID {
+            // 2. Fetch full Wikidata entity (labels + claims)
+            if let entity = await fetchWikidataEntity(qid: wdID) {
+                // 3. P31: must be an album type
+                guard isAlbum(entity: entity) else { throw WikipediaError.noResults }
 
-        // Positive: artist tokens appear in the candidate title
-        let artistTokens = normArtist.components(separatedBy: .whitespaces).filter { $0.count > 2 }
-        for token in artistTokens where t.contains(token) { s += 3 }
+                // 4. P1476: album title similarity ≥ 90% (soft – skip if property absent)
+                if let wdTitle = wikidataAlbumTitle(entity: entity) {
+                    guard charSimilarity(normalize(wdTitle), normalize(albumTitle)) >= 0.85 else {
+                        throw WikipediaError.noResults
+                    }
+                }
 
-        // Positive: album title match
-        if t.hasPrefix(normTitle) { s += 5 }
-        if t == normTitle          { s += 4 }
-
-        // Negative: clearly wrong type
-        if t.contains("disambiguation") { s -= 20 }
-        if t.contains("(film)")  || t.contains("(movie)")    { s -= 15 }
-        if t.contains("(book)")  || t.contains("(novel)")    { s -= 15 }
-        if t.contains("(tv ")    || t.contains("television") { s -= 10 }
-        if t.contains("(series)")                            { s -= 10 }
-
-        return s
-    }
-
-    // MARK: - Validate a candidate page (Steps 4–6)
-
-    private func validateAndFetch(pageTitle: String, artist: String) async throws -> WikipediaAlbumResult {
-        // Step 4: get Wikidata entity ID
-        if let wikidataID = try? await fetchWikidataID(pageTitle: pageTitle) {
-            // Step 5: validate via Wikidata
-            let valid = await validateWikidata(wikidataID: wikidataID)
-            guard valid else { throw WikipediaError.noResults }
-
-            // Step 6: fetch extract
-            return try await fetchExtract(pageTitle: pageTitle, wikidataID: wikidataID)
+                // 5. P175: performer fuzzy match (soft – skip if property absent)
+                let performerQIDs = performerIDs(entity: entity)
+                if !performerQIDs.isEmpty {
+                    let matched = await anyPerformerMatches(qids: performerQIDs, artist: artist)
+                    guard matched else { throw WikipediaError.noResults }
+                }
+            } else {
+                // Wikidata fetch failed: fall back to title heuristic
+                let tl = pageTitle.lowercased()
+                guard tl.contains("(album)") || tl.contains("(ep)") ||
+                      tl.contains("(soundtrack)") || tl.contains("(single)") else {
+                    throw WikipediaError.noResults
+                }
+            }
+        } else {
+            // No Wikidata link: only accept if the page title is clearly an album
+            let tl = pageTitle.lowercased()
+            guard tl.contains("(album)") || tl.contains("(ep)") ||
+                  tl.contains("(soundtrack)") || tl.contains("(single)") else {
+                throw WikipediaError.noResults
+            }
         }
 
-        // No Wikidata link: accept only if the title itself signals it's an album
-        let tl = pageTitle.lowercased()
-        let looksLikeAlbum = tl.contains("(album)") || tl.contains("(ep)") ||
-                             tl.contains("(soundtrack)") || tl.contains("(single)")
-        guard looksLikeAlbum else { throw WikipediaError.noResults }
-
-        return try await fetchExtract(pageTitle: pageTitle, wikidataID: nil)
+        return try await fetchExtract(pageTitle: pageTitle, wikidataID: wikidataID)
     }
 
-    // MARK: - Step 2: Wikipedia search
+    // MARK: - Wikidata helpers
 
-    private func searchWikipedia(query: String) async throws -> [WPSearchResponse.Hit] {
+    /// Fetches the `wikibase_item` from Wikipedia page props.
+    private func fetchWikidataID(pageTitle: String) async throws -> String {
+        var c = URLComponents(string: wpBase)
+        c?.queryItems = [
+            URLQueryItem(name: "action",    value: "query"),
+            URLQueryItem(name: "prop",      value: "pageprops"),
+            URLQueryItem(name: "titles",    value: pageTitle),
+            URLQueryItem(name: "format",    value: "json"),
+            URLQueryItem(name: "redirects", value: "1"),
+            URLQueryItem(name: "origin",    value: "*"),
+        ]
+        guard let url = c?.url else { throw WikipediaError.invalidURL }
+        let (data, _) = try await URLSession.shared.data(from: url)
+        let resp = try JSONDecoder().decode(WPPagePropsResponse.self, from: data)
+        guard let wdID = resp.query?.pages.values.first?.pageprops?.wikibaseItem else {
+            throw WikipediaError.noResults
+        }
+        return wdID
+    }
+
+    /// Fetches a Wikidata entity's labels and claims via `wbgetentities`.
+    private func fetchWikidataEntity(qid: String) async -> WDEntity? {
+        var c = URLComponents(string: wdAPI)
+        c?.queryItems = [
+            URLQueryItem(name: "action",    value: "wbgetentities"),
+            URLQueryItem(name: "ids",       value: qid),
+            URLQueryItem(name: "props",     value: "labels|claims"),
+            URLQueryItem(name: "languages", value: "en"),
+            URLQueryItem(name: "format",    value: "json"),
+            URLQueryItem(name: "origin",    value: "*"),
+        ]
+        guard let url = c?.url,
+              let (data, _) = try? await URLSession.shared.data(from: url),
+              let resp = try? JSONDecoder().decode(WDGetEntitiesResponse.self, from: data) else {
+            return nil
+        }
+        return resp.entities[qid]
+    }
+
+    /// Fetches the English label of a Wikidata entity (used for performer lookup).
+    private func fetchWikidataLabel(qid: String) async -> String? {
+        await fetchWikidataEntity(qid: qid)?.englishLabel
+    }
+
+    // MARK: - Wikidata claim extractors
+
+    private func isAlbum(entity: WDEntity) -> Bool {
+        guard let p31 = entity.claims?["P31"] else { return false }
+        return p31.contains { albumQIDs.contains($0.mainsnak.datavalue?.value?.id ?? "") }
+    }
+
+    /// Returns the English album title from P1476 (monolingual text).
+    private func wikidataAlbumTitle(entity: WDEntity) -> String? {
+        guard let p1476 = entity.claims?["P1476"] else { return nil }
+        for claim in p1476 {
+            if let v = claim.mainsnak.datavalue?.value,
+               (v.language == "en" || v.language == nil),
+               let text = v.text { return text }
+        }
+        return p1476.first?.mainsnak.datavalue?.value?.text
+    }
+
+    /// Returns performer (P175) QIDs.
+    private func performerIDs(entity: WDEntity) -> [String] {
+        (entity.claims?["P175"] ?? []).compactMap { $0.mainsnak.datavalue?.value?.id }
+    }
+
+    /// Returns true if any performer QID's English label fuzzy-matches `artist`.
+    private func anyPerformerMatches(qids: [String], artist: String) async -> Bool {
+        let normArtist = normalize(artist)
+        for qid in qids {
+            if let label = await fetchWikidataLabel(qid: qid) {
+                if charSimilarity(normalize(label), normArtist) >= 0.70 { return true }
+            }
+        }
+        return false
+    }
+
+    // MARK: - Wikipedia search
+
+    private func searchWikipedia(query: String, limit: Int = 10) async throws -> [WPSearchResponse.Hit] {
         var c = URLComponents(string: wpBase)
         c?.queryItems = [
             URLQueryItem(name: "action",      value: "query"),
             URLQueryItem(name: "list",        value: "search"),
             URLQueryItem(name: "srsearch",    value: query),
             URLQueryItem(name: "srnamespace", value: "0"),
-            URLQueryItem(name: "srlimit",     value: "5"),
+            URLQueryItem(name: "srlimit",     value: "\(limit)"),
             URLQueryItem(name: "format",      value: "json"),
             URLQueryItem(name: "origin",      value: "*"),
         ]
@@ -262,45 +382,31 @@ class WikipediaService {
         return resp.query?.search ?? []
     }
 
-    // MARK: - Step 4: Fetch Wikidata entity ID
+    // MARK: - Search result scoring heuristic
 
-    private func fetchWikidataID(pageTitle: String) async throws -> String {
-        var c = URLComponents(string: wpBase)
-        c?.queryItems = [
-            URLQueryItem(name: "action",    value: "query"),
-            URLQueryItem(name: "prop",      value: "pageprops"),
-            URLQueryItem(name: "titles",    value: pageTitle),
-            URLQueryItem(name: "format",    value: "json"),
-            URLQueryItem(name: "redirects", value: "1"),
-        ]
-        guard let url = c?.url else { throw WikipediaError.invalidURL }
-        let (data, _) = try await URLSession.shared.data(from: url)
-        let resp = try JSONDecoder().decode(WPPagePropsResponse.self, from: data)
+    private func score(title: String, albumTitle: String, artist: String) -> Int {
+        var s = 0
+        let t  = title.lowercased()
+        let na = artist.lowercased()
+        let nt = albumTitle.lowercased()
 
-        guard let page = resp.query?.pages.values.first,
-              let wdID = page.pageprops?.wikibaseItem else {
-            throw WikipediaError.noResults
-        }
-        return wdID
+        if t.contains("(album)")                              { s += 10 }
+        if t.contains("(ep)")                                 { s += 8  }
+        if t.contains("(soundtrack)")                         { s += 6  }
+        if t.contains("(single)")                             { s += 3  }
+        for token in na.components(separatedBy: .whitespaces).filter({ $0.count > 2 })
+            where t.contains(token)                           { s += 3  }
+        if t.hasPrefix(nt)                                    { s += 5  }
+        if t == nt                                            { s += 4  }
+        if t.contains("disambiguation")                       { s -= 20 }
+        if t.contains("(film)") || t.contains("(movie)")     { s -= 15 }
+        if t.contains("(book)") || t.contains("(novel)")     { s -= 15 }
+        if t.contains("(tv ")   || t.contains("television")  { s -= 10 }
+        if t.contains("(series)")                             { s -= 10 }
+        return s
     }
 
-    // MARK: - Step 5: Wikidata P31 validation
-
-    private func validateWikidata(wikidataID: String) async -> Bool {
-        guard let url = URL(string: "\(wdBase)/\(wikidataID).json") else { return false }
-        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return false }
-        guard let resp = try? JSONDecoder().decode(WikidataEntityResponse.self, from: data) else { return false }
-        guard let entity = resp.entities[wikidataID] else { return false }
-
-        // P31 = instance of — must match a music-album QID
-        guard let p31Claims = entity.claims?["P31"] else { return false }
-        return p31Claims.contains { claim in
-            guard let qid = claim.mainsnak.datavalue?.value?.id else { return false }
-            return albumQIDs.contains(qid)
-        }
-    }
-
-    // MARK: - Step 6: Fetch Wikipedia extract
+    // MARK: - Extract fetch
 
     private func fetchExtract(pageTitle: String, wikidataID: String?) async throws -> WikipediaAlbumResult {
         var c = URLComponents(string: wpBase)
@@ -313,6 +419,7 @@ class WikipediaService {
             URLQueryItem(name: "titles",      value: pageTitle),
             URLQueryItem(name: "format",      value: "json"),
             URLQueryItem(name: "redirects",   value: "1"),
+            URLQueryItem(name: "origin",      value: "*"),
         ]
         guard let url = c?.url else { throw WikipediaError.invalidURL }
 
@@ -321,24 +428,61 @@ class WikipediaService {
 
         guard let page = resp.query?.pages.values.first,
               let extract = page.extract,
-              page.pageid != nil,
+              let pid = page.pageid, pid > 0,
               !extract.isEmpty else {
             throw WikipediaError.noResults
         }
 
         let pageURL: URL?
-        if let fullurl = page.fullurl {
-            pageURL = URL(string: fullurl)
+        if let full = page.fullurl {
+            pageURL = URL(string: full)
         } else {
-            let encoded = page.title.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
-            pageURL = URL(string: "https://en.wikipedia.org/wiki/\(encoded)")
+            let enc = page.title.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
+            pageURL = URL(string: "https://en.wikipedia.org/wiki/\(enc)")
         }
 
-        return WikipediaAlbumResult(
-            pageTitle: page.title,
-            wikidataID: wikidataID,
-            extract: extract,
-            pageURL: pageURL
-        )
+        return WikipediaAlbumResult(pageTitle: page.title,
+                                    wikidataID: wikidataID,
+                                    extract: extract,
+                                    pageURL: pageURL)
+    }
+
+    // MARK: - String utilities
+
+    /// Normalise: lowercase, strip non-alphanumeric, collapse whitespace.
+    private func normalize(_ s: String) -> String {
+        s.lowercased()
+         .replacingOccurrences(of: "[^a-z0-9 ]", with: " ", options: .regularExpression)
+         .components(separatedBy: .whitespaces).filter { !$0.isEmpty }.joined(separator: " ")
+    }
+
+    /// Character-level similarity: 1 − (Levenshtein / max_len).  Returns 0…1.
+    private func charSimilarity(_ a: String, _ b: String) -> Double {
+        if a == b { return 1.0 }
+        let la = Array(a), lb = Array(b)
+        if la.isEmpty && lb.isEmpty { return 1.0 }
+        if la.isEmpty || lb.isEmpty { return 0.0 }
+        let dist = levenshtein(la, lb)
+        return 1.0 - Double(dist) / Double(max(la.count, lb.count))
+    }
+
+    private func levenshtein(_ a: [Character], _ b: [Character]) -> Int {
+        var prev = Array(0...b.count)
+        for i in 1...a.count {
+            var curr = [i] + Array(repeating: 0, count: b.count)
+            for j in 1...b.count {
+                curr[j] = a[i-1] == b[j-1]
+                    ? prev[j-1]
+                    : 1 + min(prev[j-1], prev[j], curr[j-1])
+            }
+            prev = curr
+        }
+        return prev[b.count]
+    }
+
+    // MARK: - Cache
+
+    private func store(_ result: WikipediaAlbumResult, key: String) {
+        cacheQueue.async(flags: .barrier) { [weak self] in self?.cache[key] = result }
     }
 }
