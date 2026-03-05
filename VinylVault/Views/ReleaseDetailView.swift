@@ -23,6 +23,7 @@ struct ReleaseDetailView: View {
     @State private var showGallery = false
     @State private var galleryStartIndex = 0
     @State private var isVerifyingLinks = false
+    @State private var showAddCopy = false
     
     var body: some View {
         ScrollView {
@@ -234,9 +235,18 @@ struct ReleaseDetailView: View {
                 // Copies Section
                 if release.copyCount > 0 {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Your Copies (\(release.copyCount))")
-                            .font(.headline)
-                        
+                        HStack {
+                            Text("Your Copies (\(release.copyCount))")
+                                .font(.headline)
+                            Spacer()
+                            Button {
+                                showAddCopy = true
+                            } label: {
+                                Label("Add Copy", systemImage: "plus.circle")
+                                    .font(.subheadline)
+                            }
+                        }
+
                         ForEach(release.copies) { copy in
                             CopyRowView(copy: copy)
                                 .onTapGesture {
@@ -245,7 +255,7 @@ struct ReleaseDetailView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    
+
                     Divider()
                 }
                 
@@ -285,6 +295,9 @@ struct ReleaseDetailView: View {
         }
         .sheet(item: $selectedCopy) { copy in
             EditCopyView(copy: copy)
+        }
+        .sheet(isPresented: $showAddCopy) {
+            AddCopyView(release: release)
         }
         .fullScreenCover(isPresented: $showGallery) {
             ImageGalleryView(

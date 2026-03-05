@@ -155,7 +155,10 @@ private struct ZoomableImageCell: View {
     }
 
     private func dragGesture(geo: GeometryProxy) -> some Gesture {
-        DragGesture(minimumDistance: 0)
+        // When not zoomed (scale == 1) use an astronomically large minimum distance so the
+        // gesture never activates and TabView's built-in page-swipe can take over.
+        // When zoomed, use distance 1 so panning starts immediately.
+        DragGesture(minimumDistance: scale > 1 ? 1 : 100_000)
             .onChanged { val in
                 guard scale > 1 else { return }
                 let maxX = (geo.size.width * (scale - 1)) / 2

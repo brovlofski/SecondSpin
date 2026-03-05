@@ -287,6 +287,17 @@ struct ListItemView: View {
 
             Spacer()
 
+            // Copy count badge
+            if release.copyCount > 1 {
+                Text("\(release.copyCount)")
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .frame(width: 20, height: 20)
+                    .background(Color.accentColor)
+                    .clipShape(Circle())
+            }
+
             Image(systemName: "chevron.right")
                 .foregroundColor(.secondary)
         }

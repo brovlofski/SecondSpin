@@ -1,4 +1,4 @@
-// 
+//
 //  AddCopyView.swift
 //  VinylVault
 //
@@ -11,16 +11,16 @@ import SwiftData
 struct AddCopyView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    @Query private var releases: [Release]
-    
-    let discogsRelease: DiscogsRelease
-    
+
+    /// Pass the existing Release directly – avoids @Query lookup in nested sheets.
+    let release: Release
+
     @State private var purchasePrice: String = ""
     @State private var condition: String = VinylCondition.nearMint.rawValue
     @State private var notes: String = ""
     @State private var showError = false
     @State private var errorMessage = ""
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -29,11 +29,18 @@ struct AddCopyView: View {
                         Text("Album")
                             .foregroundColor(.secondary)
                         Spacer()
-                        Text(discogsRelease.title)
+                        Text(release.title)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    HStack {
+                        Text("Artist")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(release.artist)
                             .multilineTextAlignment(.trailing)
                     }
                 }
-                
+
                 Section("Copy Details") {
                     HStack {
                         Text("Purchase Price")
@@ -42,17 +49,17 @@ struct AddCopyView: View {
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                     }
-                    
+
                     Picker("Condition", selection: $condition) {
                         ForEach(VinylCondition.allCases, id: \.rawValue) { cond in
                             Text(cond.rawValue).tag(cond.rawValue)
                         }
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Notes")
                             .foregroundColor(.secondary)
-                        
+
                         TextEditor(text: $notes)
                             .frame(minHeight: 100)
                     }
@@ -66,11 +73,12 @@ struct AddCopyView: View {
                         dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Add") {
                         addCopy()
                     }
+                    .fontWeight(.semibold)
                 }
             }
             .alert("Error", isPresented: $showError) {
@@ -80,22 +88,16 @@ struct AddCopyView: View {
             }
         }
     }
-    
+
     private func addCopy() {
-        guard let release = releases.first(where: { $0.discogsId == discogsRelease.id }) else {
-            errorMessage = "Release not found in collection"
-            showError = true
-            return
-        }
-        
         let copy = Copy(
             purchasePrice: Double(purchasePrice),
             condition: condition,
             notes: notes
         )
-        
+
         release.copies.append(copy)
-        
+
         do {
             try modelContext.save()
             dismiss()
@@ -107,20 +109,24 @@ struct AddCopyView: View {
 }
 
 #Preview {
-    let sampleRelease = DiscogsRelease(
-        id: 1,
+    let container = try! ModelContainer(for: Release.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+    let sampleRelease = Release(
+        discogsId: 1,
         title: "Abbey Road",
-        year: "1969",
-        thumb: nil,
-        coverImage: nil,
-        resourceUrl: nil,
-        format: ["LP"],
-        label: ["Apple"],
-        genre: ["Rock"],
-        style: ["Pop Rock"],
-        country: "UK"
+        artist: "The Beatles",
+        year: 1969,
+        label: "Apple Records",
+        coverImageURL: "",
+        thumbnailImageURL: "",
+        genres: ["Rock"],
+        styles: ["Pop Rock"],
+        format: "LP",
+        country: "UK",
+        barcode: nil,
+        tracklist: []
     )
-    
-    AddCopyView(discogsRelease: sampleRelease)
-        .modelContainer(for: [Release.self], inMemory: true)
+    container.mainContext.insert(sampleRelease)
+
+    return AddCopyView(release: sampleRelease)
+        .modelContainer(container)
 }

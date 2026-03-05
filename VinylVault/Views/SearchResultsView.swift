@@ -23,8 +23,8 @@ struct SearchResultsView: View {
     let searchType: SearchType
 
     @State private var selectedRelease: DiscogsRelease?
+    @State private var selectedExistingRelease: Release?
     @State private var isLoadingDetails = false
-    @State private var showAddCopy = false
     @State private var showError = false
     @State private var errorMessage = ""
 
@@ -69,10 +69,8 @@ struct SearchResultsView: View {
             } message: {
                 Text(errorMessage)
             }
-            .sheet(isPresented: $showAddCopy) {
-                if let release = selectedRelease {
-                    AddCopyView(discogsRelease: release)
-                }
+            .sheet(item: $selectedExistingRelease) { existingRelease in
+                AddCopyView(release: existingRelease)
             }
         }
     }
@@ -80,10 +78,9 @@ struct SearchResultsView: View {
     private func selectRelease(_ result: DiscogsRelease) {
         selectedRelease = result
 
-        // dy exists != nil
-        if existingReleases.first(where: { $0.discogsId == result.id }) != nil {
-            // Navigate to add another copy
-            showAddCopy = true
+        if let existing = existingReleases.first(where: { $0.discogsId == result.id }) {
+            // Release already in collection – add another copy
+            selectedExistingRelease = existing
         } else {
             // Fetch full details and add new release
             isLoadingDetails = true
