@@ -471,9 +471,12 @@ struct SettingsView: View {
         Task.detached(priority: .userInitiated) {
             var updatedCount = 0
             var errorCount = 0
-            let totalReleases = await MainActor.run { releases.count }
             
-            for (index, release) in await MainActor.run({ releases.enumerated() }) {
+            // Capture releases array on main actor
+            let releasesToSync = await MainActor.run { Array(releases) }
+            let totalReleases = releasesToSync.count
+            
+            for (index, release) in releasesToSync.enumerated() {
                 // Update progress
                 await MainActor.run {
                     syncProgress = Double(index) / Double(totalReleases)
