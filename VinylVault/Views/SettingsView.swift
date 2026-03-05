@@ -6,14 +6,13 @@
 //
 
 import SwiftUI
-import CloudKit
 
 enum AppLanguage: String, CaseIterable, Identifiable {
     case english = "en"
     case chinese = "zh-Hans"
-    
+
     var id: String { rawValue }
-    
+
     var displayName: String {
         switch self {
         case .english: return "English"
@@ -35,21 +34,18 @@ struct SettingsView: View {
         ("2 GB",   2 * 1024 * 1024 * 1024)
     ]
 
-    @State private var selectedCacheSizeIndex: Int = 2   // default 1 GB
+    @State private var selectedCacheSizeIndex: Int = 2  // default 1 GB
     @State private var currentDiskCacheBytes: Int = 0
     @State private var showClearCacheConfirm = false
-
-    @State private var showingCloudKitAlert = false
-    @State private var cloudKitAlertMessage = ""
-    @State private var isCheckingCloudKit = false
+    @State private var showingICloudComingSoon = false
     @State private var showingLanguageChangeAlert = false
     @State private var pendingLanguage: AppLanguage? = nil
-    
+
     private var appLanguage: AppLanguage {
         get { AppLanguage(rawValue: appLanguageRaw) ?? .english }
         set { appLanguageRaw = newValue.rawValue }
     }
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -66,37 +62,38 @@ struct SettingsView: View {
                 } footer: {
                     Text(NSLocalizedString("Choose how the app looks", comment: ""))
                 }
-                
+
                 // iCloud Sync Section
                 Section {
-                    Toggle(isOn: $iCloudSyncEnabled) {
-                        HStack {
-                            Image(systemName: "icloud.fill")
-                                .foregroundColor(.blue)
+                    HStack {
+                        Image(systemName: "icloud.fill")
+                            .foregroundColor(.blue)
+                        VStack(alignment: .leading, spacing: 2) {
                             Text(NSLocalizedString("iCloud Sync", comment: ""))
-                        }
-                    }
-                    .disabled(isCheckingCloudKit)
-                    .onChange(of: iCloudSyncEnabled) { oldValue, newValue in
-                        if newValue && !isCheckingCloudKit {
-                            checkCloudKitStatus()
-                        }
-                    }
-                    
-                    if iCloudSyncEnabled {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                            Text(NSLocalizedString("Syncing with iCloud", comment: ""))
+                            Text(NSLocalizedString("Coming Soon", comment: ""))
+                                .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        Spacer()
+                        // Info button instead of a functional toggle
+                        Button {
+                            showingICloudComingSoon = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.accentColor)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        showingICloudComingSoon = true
                     }
                 } header: {
                     Label(NSLocalizedString("Data Sync", comment: ""), systemImage: "arrow.triangle.2.circlepath")
                 } footer: {
-                    Text(NSLocalizedString("Sync your collection, lists, and preferences across all your devices using iCloud", comment: ""))
+                    Text(NSLocalizedString("iCloud sync will allow you to access your collection on all your devices. This feature is coming in a future update.", comment: ""))
                 }
-                
+
                 // Language Section
                 Section {
                     Picker(NSLocalizedString("Language", comment: ""), selection: Binding(
@@ -117,7 +114,7 @@ struct SettingsView: View {
                 } footer: {
                     Text(NSLocalizedString("The app will restart to apply the new language.", comment: ""))
                 }
-                
+
                 // Image Cache Section
                 Section {
                     Picker(NSLocalizedString("Max Cache Size", comment: ""), selection: $selectedCacheSizeIndex) {
@@ -155,7 +152,7 @@ struct SettingsView: View {
                         Text("1.0.0")
                             .foregroundColor(.secondary)
                     }
-                    
+
                     HStack {
                         Text(NSLocalizedString("Build", comment: ""))
                         Spacer()
@@ -182,10 +179,10 @@ struct SettingsView: View {
             } message: {
                 Text(NSLocalizedString("This will delete all cached images. They will be re-downloaded as needed.", comment: ""))
             }
-            .alert(NSLocalizedString("iCloud Status", comment: ""), isPresented: $showingCloudKitAlert) {
-                Button(NSLocalizedString("OK", comment: ""), role: .cancel) { }
+            .alert(NSLocalizedString("iCloud Sync", comment: ""), isPresented: $showingICloudComingSoon) {
+                Button(NSLocalizedString("OK", comment: ""), role: .cancel) {}
             } message: {
-                Text(cloudKitAlertMessage)
+                Text(NSLocalizedString("iCloud sync is coming in a future update. Your collection will be backed up and available across all your devices.", comment: ""))
             }
             .alert(NSLocalizedString("Change Language", comment: ""), isPresented: $showingLanguageChangeAlert) {
                 Button(NSLocalizedString("Cancel", comment: ""), role: .cancel) {
@@ -203,12 +200,12 @@ struct SettingsView: View {
             }
         }
     }
-    
+
+    // MARK: - Helpers
+
     private func refreshCacheInfo() {
-        // Load saved max size preference
         let stored = ImageCache.shared.maxDiskCacheBytes
         selectedCacheSizeIndex = cacheSizeOptions.firstIndex(where: { $0.bytes == stored }) ?? 2
-        // Compute usage off main thread
         Task.detached(priority: .utility) {
             let bytes = ImageCache.shared.currentDiskCacheSizeBytes()
             await MainActor.run { currentDiskCacheBytes = bytes }
@@ -216,67 +213,12 @@ struct SettingsView: View {
     }
 
     private func applyLanguageAndRestart(_ language: AppLanguage) {
-        // Save the new language preference
         appLanguageRaw = language.rawValue
         pendingLanguage = nil
-        
-        // Set the AppleLanguages key in UserDefaults so iOS uses it on next launch
         UserDefaults.standard.set([language.rawValue], forKey: "AppleLanguages")
         UserDefaults.standard.synchronize()
-        
-        // Give a brief moment for defaults to save, then exit
-        // iOS will relaunch the app and pick up the new language
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             exit(0)
-        }
-    }
-    
-    @MainActor
-    private func checkCloudKitStatus() {
-        guard !isCheckingCloudKit else { return }
-        isCheckingCloudKit = true
-        
-        Task {
-            do {
-                let status = try await CKContainer.default().accountStatus()
-                
-                switch status {
-                case .available:
-                    cloudKitAlertMessage = NSLocalizedString("iCloud is available and ready to sync your data.", comment: "")
-                    showingCloudKitAlert = true
-                    isCheckingCloudKit = false
-                case .noAccount:
-                    cloudKitAlertMessage = NSLocalizedString("No iCloud account found. Please sign in to iCloud in Settings to enable sync.", comment: "")
-                    iCloudSyncEnabled = false
-                    showingCloudKitAlert = true
-                    isCheckingCloudKit = false
-                case .restricted:
-                    cloudKitAlertMessage = NSLocalizedString("iCloud access is restricted on this device.", comment: "")
-                    iCloudSyncEnabled = false
-                    showingCloudKitAlert = true
-                    isCheckingCloudKit = false
-                case .couldNotDetermine:
-                    cloudKitAlertMessage = NSLocalizedString("Could not determine iCloud status. Please check your connection.", comment: "")
-                    iCloudSyncEnabled = false
-                    showingCloudKitAlert = true
-                    isCheckingCloudKit = false
-                case .temporarilyUnavailable:
-                    cloudKitAlertMessage = NSLocalizedString("iCloud is temporarily unavailable. Please try again later.", comment: "")
-                    iCloudSyncEnabled = false
-                    showingCloudKitAlert = true
-                    isCheckingCloudKit = false
-                @unknown default:
-                    cloudKitAlertMessage = NSLocalizedString("Unknown iCloud status.", comment: "")
-                    iCloudSyncEnabled = false
-                    showingCloudKitAlert = true
-                    isCheckingCloudKit = false
-                }
-            } catch {
-                cloudKitAlertMessage = NSLocalizedString("Error checking iCloud status: \(error.localizedDescription)", comment: "")
-                iCloudSyncEnabled = false
-                showingCloudKitAlert = true
-                isCheckingCloudKit = false
-            }
         }
     }
 }
