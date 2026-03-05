@@ -227,7 +227,7 @@ struct GridItemView: View {
             
             // Format and Year
             HStack(spacing: 4) {
-                Text(release.format)
+                Text(release.fullFormatDisplay)
                 Text("·")
                 Text(release.year.formatted(.number.grouping(.never)))
             }
@@ -276,7 +276,7 @@ struct ListItemView: View {
                 HStack(spacing: 4) {
                     Text(release.year.formatted(.number.grouping(.never)))
                     Text("·")
-                    Text(release.format)
+                    Text(release.fullFormatDisplay)
                     Text("·")
                     Text(release.label)
                         .lineLimit(1)

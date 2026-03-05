@@ -81,7 +81,7 @@ struct ReleaseDetailView: View {
                         .foregroundColor(.secondary)
                     
                     HStack(spacing: 4) {
-                        Text(release.format)
+                        Text(release.fullFormatDisplay)
                         Text("·")
                         Text(String(release.year))
                         Text("·")

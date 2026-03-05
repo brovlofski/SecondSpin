@@ -21,6 +21,8 @@ final class Release {
     var genres: [String]
     var styles: [String]
     var format: String
+    /// Descriptions from Discogs formats array, e.g. ["LP", "Album", "Repress", "Club Edition"]
+    var formatDescriptions: [String]
     var country: String?
     var barcode: String?
     var dateAdded: Date
@@ -50,6 +52,7 @@ final class Release {
         genres: [String],
         styles: [String],
         format: String,
+        formatDescriptions: [String] = [],
         country: String? = nil,
         barcode: String? = nil,
         dateAdded: Date = Date(),
@@ -66,6 +69,7 @@ final class Release {
         self.genres = genres
         self.styles = styles
         self.format = format
+        self.formatDescriptions = formatDescriptions
         self.country = country
         self.barcode = barcode
         self.dateAdded = dateAdded
@@ -79,6 +83,15 @@ final class Release {
     
     var copyCount: Int {
         copies.count
+    }
+
+    /// Full human-readable format string, e.g. "Vinyl · LP · Album · Repress"
+    var fullFormatDisplay: String {
+        let parts = ([format] + formatDescriptions).filter { !$0.isEmpty }
+        // Deduplicate while preserving order
+        var seen = Set<String>()
+        let unique = parts.filter { seen.insert($0).inserted }
+        return unique.joined(separator: " · ")
     }
 }
 

@@ -131,6 +131,7 @@ struct SearchResultsView: View {
             genres: details.genres ?? [],
             styles: details.styles ?? [],
             format: details.formats?.first?.name ?? "LP",
+            formatDescriptions: details.formats?.first?.descriptions ?? [],
             country: details.country,
             barcode: details.identifiers?.first(where: { $0.type == "Barcode" })?.value,
             tracklist: details.tracklist?.map { Track(position: $0.position, title: $0.title, duration: $0.duration) } ?? []
@@ -213,14 +214,14 @@ struct SearchResultRow: View {
 
                 // Format and Country on same line
                 HStack(spacing: 4) {
-                    if let format = result.format?.first {
-                        Text(format)
+                    if let formats = result.format, !formats.isEmpty {
+                        Text(formats.joined(separator: " · "))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
 
                     if let country = result.country {
-                        if result.format?.first != nil {
+                        if result.format?.isEmpty == false {
                             Text("·")
                                 .font(.caption)
                                 .foregroundColor(.secondary)

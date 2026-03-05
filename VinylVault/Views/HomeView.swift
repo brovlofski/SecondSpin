@@ -149,9 +149,11 @@ struct HomeView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
-                    HStack {
+                    HStack(spacing: 4) {
                         Text(String(album.year))
-                        Text("•")
+                        Text("·")
+                        Text(album.fullFormatDisplay)
+                        Text("·")
                         Text(album.genres.first ?? "Unknown")
                     }
                     .font(.caption)
