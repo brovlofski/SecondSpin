@@ -239,6 +239,7 @@ struct GridItemView: View {
             }
             .font(.caption)
             .foregroundColor(.secondary)
+            .lineLimit(1)
         }
     }
 }
@@ -291,10 +292,10 @@ struct ListItemView: View {
                     }
                     Text("·")
                     Text(release.label)
-                        .lineLimit(1)
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .lineLimit(1)
             }
 
             Spacer()
