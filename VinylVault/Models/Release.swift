@@ -15,6 +15,7 @@ final class Release {
     var artist: String
     var year: Int
     var label: String
+    var catalogNumber: String?
     var coverImageURL: String
     var thumbnailImageURL: String
     var allImageURLs: [String]
@@ -46,6 +47,7 @@ final class Release {
         artist: String,
         year: Int,
         label: String,
+        catalogNumber: String? = nil,
         coverImageURL: String,
         thumbnailImageURL: String,
         allImageURLs: [String] = [],
@@ -63,6 +65,7 @@ final class Release {
         self.artist = artist
         self.year = year
         self.label = label
+        self.catalogNumber = catalogNumber
         self.coverImageURL = coverImageURL
         self.thumbnailImageURL = thumbnailImageURL
         self.allImageURLs = allImageURLs.isEmpty ? (coverImageURL.isEmpty ? [] : [coverImageURL]) : allImageURLs

@@ -91,6 +91,10 @@ struct ReleaseDetailView: View {
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .layoutPriority(-1)
+                        if let catalogNumber = release.catalogNumber {
+                            Text("·")
+                            Text(catalogNumber)
+                        }
                         if let country = release.country {
                             Text("·")
                             Text(country)

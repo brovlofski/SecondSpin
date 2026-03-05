@@ -125,6 +125,7 @@ struct SearchResultsView: View {
             artist: artist,
             year: details.year ?? 0,
             label: details.labels.first?.name ?? "Unknown Label",
+            catalogNumber: details.labels.first?.catno,
             coverImageURL: coverImageURL,
             thumbnailImageURL: thumbnailImageURL,
             allImageURLs: allImageURLs,

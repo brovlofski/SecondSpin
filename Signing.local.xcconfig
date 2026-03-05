@@ -1,0 +1,5 @@
+// Local signing configuration — DO NOT COMMIT
+// Copy this file to your machine after cloning and fill in your own values.
+
+DEVELOPMENT_TEAM = 63589JM4P8
+PRODUCT_BUNDLE_IDENTIFIER = com.secondspin.app

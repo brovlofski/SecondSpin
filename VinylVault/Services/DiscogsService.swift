@@ -51,6 +51,7 @@ struct DiscogsReleaseDetail: Codable {
     
     struct DiscogsLabel: Codable {
         let name: String
+        let catno: String?
     }
     
     struct DiscogsFormat: Codable {

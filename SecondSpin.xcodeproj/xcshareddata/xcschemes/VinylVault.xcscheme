@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "EE0001"
-               BuildableName = "VinylVault.app"
-               BlueprintName = "VinylVault"
-               ReferencedContainer = "container:VinylVault.xcodeproj">
+               BuildableName = "SecondSpin.app"
+               BlueprintName = "SecondSpin"
+               ReferencedContainer = "container:SecondSpin.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "EE0001"
-            BuildableName = "VinylVault.app"
-            BlueprintName = "VinylVault"
-            ReferencedContainer = "container:VinylVault.xcodeproj">
+            BuildableName = "SecondSpin.app"
+            BlueprintName = "SecondSpin"
+            ReferencedContainer = "container:SecondSpin.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -62,9 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "EE0001"
-            BuildableName = "VinylVault.app"
-            BlueprintName = "VinylVault"
-            ReferencedContainer = "container:VinylVault.xcodeproj">
+            BuildableName = "SecondSpin.app"
+            BlueprintName = "SecondSpin"
+            ReferencedContainer = "container:SecondSpin.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
