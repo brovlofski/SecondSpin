@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -34,10 +34,11 @@
 		AA0025 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0026 /* SettingsView.swift */; };
 		AA0026 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = BB0027 /* Localizable.strings */; };
 		AA0027 /* ImageGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0030 /* ImageGalleryView.swift */; };
+		AA0028 /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0031 /* BackupService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		AAAA01 /* VinylVault.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VinylVault.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AAAA01 /* SecondSpin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SecondSpin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB0001 /* VinylVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VinylVaultApp.swift; sourceTree = "<group>"; };
 		BB0002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		BB0003 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -63,8 +64,8 @@
 		BB0023 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BB0024 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		BB0025 /* AlbumArtworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumArtworkService.swift; sourceTree = "<group>"; };
+		BB0031 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
 		BB0026 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		BB0027 /* Localizable.strings */ = {isa = PBXVariantGroup; children = (BB0028 /* en */, BB0029 /* zh-Hans */); name = Localizable.strings; sourceTree = "<group>"; };
 		BB0028 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BB0029 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		BB0030 /* ImageGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGalleryView.swift; sourceTree = "<group>"; };
@@ -106,7 +107,7 @@
 		DD0003 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AAAA01 /* VinylVault.app */,
+				AAAA01 /* SecondSpin.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -137,6 +138,7 @@
 				BB0019 /* WikipediaService.swift */,
 				BB0020 /* StreamingLinkService.swift */,
 				BB0025 /* AlbumArtworkService.swift */,
+				BB0031 /* BackupService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -183,9 +185,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		EE0001 /* VinylVault */ = {
+		EE0001 /* SecondSpin */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = FF0001 /* Build configuration list for PBXNativeTarget "VinylVault" */;
+			buildConfigurationList = FF0001 /* Build configuration list for PBXNativeTarget "SecondSpin" */;
 			buildPhases = (
 				EE0002 /* Sources */,
 				CC0001 /* Frameworks */,
@@ -195,9 +197,9 @@
 			);
 			dependencies = (
 			);
-			name = VinylVault;
+			name = SecondSpin;
 			productName = VinylVault;
-			productReference = AAAA01 /* VinylVault.app */;
+			productReference = AAAA01 /* SecondSpin.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -209,13 +211,14 @@
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
 				LastUpgradeCheck = 2630;
+				ORGANIZATIONNAME = EY;
 				TargetAttributes = {
 					EE0001 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
 			};
-			buildConfigurationList = FF0002 /* Build configuration list for PBXProject "VinylVault" */;
+			buildConfigurationList = FF0002 /* Build configuration list for PBXProject "SecondSpin" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -225,11 +228,12 @@
 				"zh-Hans",
 			);
 			mainGroup = DD0001;
+			minimizedProjectReferenceProxies = 1;
 			productRefGroup = DD0003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				EE0001 /* VinylVault */,
+				EE0001 /* SecondSpin */,
 			);
 		};
 /* End PBXProject section */
@@ -276,10 +280,23 @@
 				AA0024 /* AlbumArtworkService.swift in Sources */,
 				AA0025 /* SettingsView.swift in Sources */,
 				AA0027 /* ImageGalleryView.swift in Sources */,
+				AA0028 /* BackupService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		BB0027 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				BB0028 /* en */,
+				BB0029 /* zh-Hans */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		HH0001 /* Debug */ = {
@@ -415,7 +432,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VinylVault/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_NSCameraUsageDescription = "VinylVault needs camera access to scan vinyl barcodes";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -449,7 +466,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VinylVault/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_NSCameraUsageDescription = "VinylVault needs camera access to scan vinyl barcodes";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -474,7 +491,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		FF0001 /* Build configuration list for PBXNativeTarget "VinylVault" */ = {
+		FF0001 /* Build configuration list for PBXNativeTarget "SecondSpin" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				HH0003 /* Debug */,
@@ -483,7 +500,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		FF0002 /* Build configuration list for PBXProject "VinylVault" */ = {
+		FF0002 /* Build configuration list for PBXProject "SecondSpin" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				HH0001 /* Debug */,
@@ -493,18 +510,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin PBXVariantGroup section */
-		BB0027 /* Localizable.strings */ = {
-			isa = PBXVariantGroup;
-			children = (
-				BB0028 /* en */,
-				BB0029 /* zh-Hans */,
-			);
-			name = Localizable.strings;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
 	};
 	rootObject = GG0001 /* Project object */;
 }
