@@ -71,7 +71,9 @@ struct ImageGalleryView: View {
                         Spacer()
 
                         if imageURLs.count > 1 {
-                            Text("\(currentIndex + 1) / \(imageURLs.count)")
+                            let current = currentIndex + 1
+                            let total = imageURLs.count
+                            Text("\(current) / \(total)")
                                 .font(.subheadline.weight(.medium))
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 12)
