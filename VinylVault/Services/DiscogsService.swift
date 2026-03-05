@@ -117,6 +117,24 @@ class DiscogsService {
         return try await performSearch(url: url)
     }
     
+    // MARK: - Keyword Search
+
+    func searchByKeyword(_ query: String) async throws -> [DiscogsRelease] {
+        let endpoint = "\(baseURL)/database/search"
+        var components = URLComponents(string: endpoint)
+        components?.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "type", value: "release"),
+            URLQueryItem(name: "token", value: token)
+        ]
+
+        guard let url = components?.url else {
+            throw DiscogsError.invalidURL
+        }
+
+        return try await performSearch(url: url)
+    }
+
     // MARK: - Search by Artist and Title
     
     func searchByArtistAndTitle(

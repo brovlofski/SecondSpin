@@ -2,84 +2,49 @@
 //  ManualSearchView.swift
 //  VinylVault
 //
-//  Manual search by artist and title
+//  Manual search with Keyword and Advanced modes
 //
 
 import SwiftUI
 
+// MARK: - Search Mode
+
+enum ManualSearchMode: String, CaseIterable {
+    case keyword = "Keyword"
+    case advanced = "Advanced"
+}
+
+// MARK: - View
+
 struct ManualSearchView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = ManualSearchViewModel()
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
-                // Search Form
-                VStack(spacing: 16) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Artist")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(.secondary)
-                        
-                        TextField("Enter artist name", text: $viewModel.artist)
-                            .textFieldStyle(.roundedBorder)
-                            .textInputAutocapitalization(.words)
-                            .submitLabel(.next)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Album Title")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(.secondary)
-                        
-                        TextField("Enter album title", text: $viewModel.albumTitle)
-                            .textFieldStyle(.roundedBorder)
-                            .textInputAutocapitalization(.words)
-                            .submitLabel(.next)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Format (Optional)")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(.secondary)
-                        
-                        TextField("e.g., Vinyl, CD, Cassette", text: $viewModel.format)
-                            .textFieldStyle(.roundedBorder)
-                            .textInputAutocapitalization(.words)
-                            .submitLabel(.next)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Country (Optional)")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(.secondary)
-                        
-                        TextField("e.g., US, UK, Japan", text: $viewModel.country)
-                            .textFieldStyle(.roundedBorder)
-                            .textInputAutocapitalization(.words)
-                            .submitLabel(.search)
-                            .onSubmit {
-                                viewModel.search()
-                            }
+
+                // ── Mode picker ───────────────────────────────────────────────
+                Picker("Search Mode", selection: $viewModel.searchMode) {
+                    ForEach(ManualSearchMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
                     }
                 }
-                .padding()
-                .background(Color(.systemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
-                
-                // Search Button
-                Button(action: {
-                    viewModel.search()
-                }) {
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+
+                // ── Search form ───────────────────────────────────────────────
+                if viewModel.searchMode == .keyword {
+                    keywordForm
+                } else {
+                    advancedForm
+                }
+
+                // ── Search button ─────────────────────────────────────────────
+                Button(action: { viewModel.search() }) {
                     HStack {
                         if viewModel.isLoading {
-                            ProgressView()
-                                .tint(.white)
+                            ProgressView().tint(.white)
                         } else {
                             Image(systemName: "magnifyingglass")
                             Text("Search")
@@ -93,24 +58,21 @@ struct ManualSearchView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .disabled(!viewModel.canSearch || viewModel.isLoading)
-                
+                .padding(.horizontal)
+
                 Spacer()
             }
-            .padding()
+            .padding(.top, 8)
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Manual Search")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+                    Button("Cancel") { dismiss() }
                 }
             }
             .alert("Error", isPresented: $viewModel.showError) {
-                Button("OK") {
-                    viewModel.showError = false
-                }
+                Button("OK") { viewModel.showError = false }
             } message: {
                 Text(viewModel.errorMessage)
             }
@@ -119,45 +81,164 @@ struct ManualSearchView: View {
                     SearchResultsView(results: results, searchType: .manual)
                 }
             }
+            // Clear fields when switching modes so stale input doesn't confuse canSearch
+            .onChange(of: viewModel.searchMode) { _, _ in
+                viewModel.clearFields()
+            }
         }
+    }
+
+    // MARK: - Keyword form
+
+    private var keywordForm: some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Keywords")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+
+                TextField("e.g. Miles Davis Kind of Blue", text: $viewModel.keyword)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+                    .onSubmit { viewModel.search() }
+            }
+            .padding()
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+            .padding(.horizontal)
+        }
+    }
+
+    // MARK: - Advanced form (original fields)
+
+    private var advancedForm: some View {
+        VStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Artist")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+
+                TextField("Enter artist name", text: $viewModel.artist)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.next)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Album Title")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+
+                TextField("Enter album title", text: $viewModel.albumTitle)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.next)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Format (Optional)")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+
+                TextField("e.g., Vinyl, CD, Cassette", text: $viewModel.format)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.next)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Country (Optional)")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+
+                TextField("e.g., US, UK, Japan", text: $viewModel.country)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.search)
+                    .onSubmit { viewModel.search() }
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 4)
+        .padding(.horizontal)
     }
 }
 
 // MARK: - ViewModel
 
 class ManualSearchViewModel: ObservableObject {
+    // Mode
+    @Published var searchMode: ManualSearchMode = .keyword
+
+    // Keyword mode
+    @Published var keyword = ""
+
+    // Advanced mode (original fields)
     @Published var artist = ""
     @Published var albumTitle = ""
     @Published var format = ""
     @Published var country = ""
+
+    // Shared state
     @Published var isLoading = false
     @Published var showError = false
     @Published var errorMessage = ""
     @Published var showResults = false
     @Published var searchResults: [DiscogsRelease]?
-    
+
     var canSearch: Bool {
-        !artist.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !albumTitle.trimmingCharacters(in: .whitespaces).isEmpty
+        switch searchMode {
+        case .keyword:
+            return !keyword.trimmingCharacters(in: .whitespaces).isEmpty
+        case .advanced:
+            return !artist.trimmingCharacters(in: .whitespaces).isEmpty &&
+                   !albumTitle.trimmingCharacters(in: .whitespaces).isEmpty
+        }
     }
-    
+
+    func clearFields() {
+        keyword = ""
+        artist = ""
+        albumTitle = ""
+        format = ""
+        country = ""
+    }
+
     func search() {
         guard canSearch else { return }
-        
         isLoading = true
-        
+
         Task {
             do {
-                let trimmedFormat = format.trimmingCharacters(in: .whitespaces)
-                let trimmedCountry = country.trimmingCharacters(in: .whitespaces)
-                
-                let results = try await DiscogsService.shared.searchByArtistAndTitle(
-                    artist: artist.trimmingCharacters(in: .whitespaces),
-                    title: albumTitle.trimmingCharacters(in: .whitespaces),
-                    format: trimmedFormat.isEmpty ? nil : trimmedFormat,
-                    country: trimmedCountry.isEmpty ? nil : trimmedCountry
-                )
-                
+                let results: [DiscogsRelease]
+
+                switch searchMode {
+                case .keyword:
+                    results = try await DiscogsService.shared.searchByKeyword(
+                        keyword.trimmingCharacters(in: .whitespaces)
+                    )
+
+                case .advanced:
+                    let trimmedFormat = format.trimmingCharacters(in: .whitespaces)
+                    let trimmedCountry = country.trimmingCharacters(in: .whitespaces)
+                    results = try await DiscogsService.shared.searchByArtistAndTitle(
+                        artist: artist.trimmingCharacters(in: .whitespaces),
+                        title: albumTitle.trimmingCharacters(in: .whitespaces),
+                        format: trimmedFormat.isEmpty ? nil : trimmedFormat,
+                        country: trimmedCountry.isEmpty ? nil : trimmedCountry
+                    )
+                }
+
                 await MainActor.run {
                     isLoading = false
                     searchResults = results
