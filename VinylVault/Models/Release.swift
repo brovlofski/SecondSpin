@@ -25,7 +25,13 @@ final class Release {
     var barcode: String?
     var dateAdded: Date
     var tracklist: [Track]
-    
+    /// Verified direct Spotify album URL (nil = not yet resolved)
+    var spotifyAlbumURL: String?
+    /// Verified direct Apple Music album URL (nil = not yet resolved)
+    var appleMusicAlbumURL: String?
+    /// True once the streaming links have been searched and cached
+    var streamingLinksVerified: Bool
+
     @Relationship(deleteRule: .cascade, inverse: \Copy.release)
     var copies: [Copy]
     
@@ -64,6 +70,9 @@ final class Release {
         self.barcode = barcode
         self.dateAdded = dateAdded
         self.tracklist = tracklist
+        self.spotifyAlbumURL = nil
+        self.appleMusicAlbumURL = nil
+        self.streamingLinksVerified = false
         self.copies = []
         self.lists = []
     }

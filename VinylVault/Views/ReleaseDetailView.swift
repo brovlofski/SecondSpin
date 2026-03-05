@@ -22,6 +22,7 @@ struct ReleaseDetailView: View {
     @State private var selectedCopy: Copy?
     @State private var showGallery = false
     @State private var galleryStartIndex = 0
+    @State private var isVerifyingLinks = false
     
     var body: some View {
         ScrollView {
@@ -124,25 +125,43 @@ struct ReleaseDetailView: View {
                         HStack(spacing: 14) {
                             Button {
                                 StreamingLinkService.shared.openSpotify(
+                                    release: release,
                                     artist: release.artist,
                                     album: release.title
                                 )
                             } label: {
-                                Image("SpotifyIcon")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 28, height: 28)
+                                ZStack {
+                                    Image("SpotifyIcon")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 28, height: 28)
+                                    if isVerifyingLinks {
+                                        ProgressView()
+                                            .scaleEffect(0.6)
+                                            .frame(width: 28, height: 28)
+                                            .background(.ultraThinMaterial, in: Circle())
+                                    }
+                                }
                             }
                             Button {
                                 StreamingLinkService.shared.openAppleMusic(
+                                    release: release,
                                     artist: release.artist,
                                     album: release.title
                                 )
                             } label: {
-                                Image("AppleMusicIcon")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 28, height: 28)
+                                ZStack {
+                                    Image("AppleMusicIcon")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 28, height: 28)
+                                    if isVerifyingLinks {
+                                        ProgressView()
+                                            .scaleEffect(0.6)
+                                            .frame(width: 28, height: 28)
+                                            .background(.ultraThinMaterial, in: Circle())
+                                    }
+                                }
                             }
                             if let wikiURL = wikipediaURL {
                                 Link(destination: wikiURL) {
@@ -248,6 +267,12 @@ struct ReleaseDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             loadWikipediaDescription()
+        }
+        .task {
+            guard !release.streamingLinksVerified else { return }
+            isVerifyingLinks = true
+            await StreamingLinkService.shared.verifyAndUpdateLinks(release: release)
+            isVerifyingLinks = false
         }
         .confirmationDialog("Remove Release", isPresented: $showDeleteConfirmation) {
             Button("Remove", role: .destructive) {
