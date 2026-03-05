@@ -27,7 +27,7 @@ struct ContentView: View {
             // Center placeholder (invisible — actual button is overlaid below)
             Color.clear
                 .tabItem {
-                    Label("Add", systemImage: "plus.circle.fill")
+                    Image(systemName: "plus.circle.fill")
                 }
                 .tag(2)
 
@@ -65,12 +65,12 @@ struct ContentView: View {
             } label: {
                 ZStack {
                     Circle()
-                        .fill(Color.primary)
+                        .fill(Color.blue)
                         .frame(width: 60, height: 60)
                         .shadow(color: .black.opacity(0.25), radius: 10, x: 0, y: 4)
                     Image(systemName: "plus")
                         .font(.system(size: 26, weight: .semibold))
-                        .foregroundColor(Color(.systemBackground))
+                        .foregroundColor(.white)
                 }
             }
             // 49 pt tab bar; place button centre at ~same height as tab icons
