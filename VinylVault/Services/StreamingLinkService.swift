@@ -143,11 +143,12 @@ class StreamingLinkService {
                 UIApplication.shared.open(url); return
             }
         }
-        // Fallback: search URL
-        let q = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
+        // Fallback: album-specific search URL
+        // Using "album:" prefix narrows results to albums only
+        let q = "album:\(album) artist:\(artist)".addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
         if let appURL = URL(string: "spotify:search:\(q)"), UIApplication.shared.canOpenURL(appURL) {
             UIApplication.shared.open(appURL)
-        } else if let webURL = URL(string: "https://open.spotify.com/search/\(q)") {
+        } else if let webURL = URL(string: "https://open.spotify.com/search/album%3A\(album.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")%20artist%3A\(artist.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") {
             UIApplication.shared.open(webURL)
         }
     }
@@ -156,21 +157,55 @@ class StreamingLinkService {
         if let stored = release?.appleMusicAlbumURL, let url = URL(string: stored) {
             UIApplication.shared.open(url); return
         }
-        let q = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        if let url = URL(string: "https://music.apple.com/search?term=\(q)") {
-            UIApplication.shared.open(url)
+        // Fallback: Use iTunes Search API to find the album and redirect
+        Task {
+            if let directURL = await self.searchAppleMusicAlbum(artist: artist, album: album) {
+                await MainActor.run {
+                    if let url = URL(string: directURL) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            } else {
+                // Final fallback: generic search with album filter hint
+                let q = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                await MainActor.run {
+                    if let url = URL(string: "https://music.apple.com/search?term=\(q)") {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            }
         }
     }
 
+    // MARK: - Helper: Quick Apple Music album lookup
+    
+    private func searchAppleMusicAlbum(artist: String, album: String) async -> String? {
+        let query = "\(album) \(artist)"
+        guard let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://itunes.apple.com/search?term=\(encoded)&entity=album&limit=3") else {
+            return nil
+        }
+        guard let (data, _) = try? await URLSession.shared.data(from: url),
+              let resp = try? JSONDecoder().decode(ITunesSearchResponse.self, from: data),
+              let firstAlbum = resp.results.first(where: { 
+                  ($0.wrapperType == "collection" || $0.collectionType == "Album") &&
+                  normalize($0.artistName).contains(normalize(artist).prefix(5)) // fuzzy artist match
+              }) else {
+            return nil
+        }
+        return firstAlbum.collectionViewUrl
+    }
+    
     // MARK: - Legacy helpers (backward compatible)
 
     func spotifyAppURL(artist: String, album: String) -> URL? {
-        let q = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
+        let q = "album:\(album) artist:\(artist)".addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
         return URL(string: "spotify:search:\(q)")
     }
     func spotifyWebURL(artist: String, album: String) -> URL? {
-        let q = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        return URL(string: "https://open.spotify.com/search/\(q)")
+        let albumEncoded = album.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let artistEncoded = artist.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        return URL(string: "https://open.spotify.com/search/album%3A\(albumEncoded)%20artist%3A\(artistEncoded)")
     }
     func appleMusicURL(artist: String, album: String) -> URL? {
         let q = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
