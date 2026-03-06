@@ -142,6 +142,13 @@ class WikipediaService {
     private let cacheQueue = DispatchQueue(label: "wiki.cache", attributes: .concurrent)
 
     private init() {}
+    
+    /// Clear the Wikipedia cache. Call this from Settings or when needed.
+    func clearCache() {
+        cacheQueue.async(flags: .barrier) { [weak self] in
+            self?.cache.removeAll()
+        }
+    }
 
     // MARK: - Public API (backward compatible)
 

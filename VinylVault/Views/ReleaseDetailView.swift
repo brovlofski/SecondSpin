@@ -418,6 +418,9 @@ struct ReleaseDetailView: View {
     }
     
     private func loadWikipediaDescription() {
+        // Skip if already loaded
+        guard wikipediaDescription == nil, !isLoadingWikipedia else { return }
+        
         isLoadingWikipedia = true
 
         Task {
@@ -444,6 +447,9 @@ struct ReleaseDetailView: View {
     }
     
     private func loadMusicBrainzData() {
+        // Skip if already loaded
+        guard musicBrainzRating == nil, !isLoadingMusicBrainz else { return }
+        
         isLoadingMusicBrainz = true
         isLoadingReviews = true
         
