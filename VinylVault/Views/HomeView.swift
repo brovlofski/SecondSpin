@@ -226,30 +226,46 @@ struct HomeView: View {
         .rotationEffect(.degrees(Double(dragOffset) / 20))
         .opacity(isDragging ? 0.8 : 1.0)
         .gesture(
-            DragGesture()
+            DragGesture(minimumDistance: 20)
                 .onChanged { value in
-                    isDragging = true
-                    dragOffset = value.translation.width
+                    let horizontalAmount = abs(value.translation.width)
+                    let verticalAmount = abs(value.translation.height)
+                    
+                    // Only respond to horizontal swipes (horizontal movement > vertical movement)
+                    if horizontalAmount > verticalAmount {
+                        isDragging = true
+                        dragOffset = value.translation.width
+                    }
                 }
                 .onEnded { value in
-                    let threshold: CGFloat = 100
-                    if abs(value.translation.width) > threshold {
-                        // Swipe dismissed - animate out and refresh
-                        withAnimation(.easeOut(duration: 0.3)) {
-                            dragOffset = value.translation.width > 0 ? 500 : -500
-                        }
-                        
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            dragOffset = 0
-                            isDragging = false
-                            selectAlbumOfTheDay(forceRefresh: true)
+                    let horizontalAmount = abs(value.translation.width)
+                    let verticalAmount = abs(value.translation.height)
+                    
+                    // Only process if this was a horizontal swipe
+                    if horizontalAmount > verticalAmount {
+                        let threshold: CGFloat = 100
+                        if abs(value.translation.width) > threshold {
+                            // Swipe dismissed - animate out and refresh
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                dragOffset = value.translation.width > 0 ? 500 : -500
+                            }
+                            
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                dragOffset = 0
+                                isDragging = false
+                                selectAlbumOfTheDay(forceRefresh: true)
+                            }
+                        } else {
+                            // Not enough swipe - bounce back
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                dragOffset = 0
+                                isDragging = false
+                            }
                         }
                     } else {
-                        // Not enough swipe - bounce back
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            dragOffset = 0
-                            isDragging = false
-                        }
+                        // Was a vertical swipe - reset state
+                        dragOffset = 0
+                        isDragging = false
                     }
                 }
         )
