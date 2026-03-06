@@ -489,13 +489,11 @@ struct ReleaseDetailView: View {
                 }
                 isLoadingWikipedia = false
                 
-                // MusicBrainz data
-                if let mb = mbData {
-                    musicBrainzRating = mb.rating
-                    musicBrainzGenres = mb.genres
-                    musicBrainzMBID = mb.mbid
-                    albumReviews = mb.reviews
-                }
+                // MusicBrainz data (mbData is a tuple, not optional)
+                musicBrainzRating = mbData.rating
+                musicBrainzGenres = mbData.genres
+                musicBrainzMBID = mbData.mbid
+                albumReviews = mbData.reviews
                 isLoadingMusicBrainz = false
                 isLoadingReviews = false
             }
