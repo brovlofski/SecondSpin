@@ -10,6 +10,7 @@
 		2ED357512F5AE45B00B83487 /* MusicBrainzModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357502F5AE45B00B83487 /* MusicBrainzModels.swift */; };
 		2ED357542F5AE49200B83487 /* MusicBrainzService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357532F5AE49200B83487 /* MusicBrainzService.swift */; };
 		2ED357552F5AE49200B83487 /* CritiqueBrainzService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357522F5AE49200B83487 /* CritiqueBrainzService.swift */; };
+		2ED3575A2F5B450000B83487 /* ReviewCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED3575B2F5B450000B83487 /* ReviewCardView.swift */; };
 		AA0001 /* VinylVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0001 /* VinylVaultApp.swift */; };
 		AA0002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0002 /* ContentView.swift */; };
 		AA0003 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0003 /* HomeView.swift */; };
@@ -44,6 +45,7 @@
 		2ED357502F5AE45B00B83487 /* MusicBrainzModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicBrainzModels.swift; sourceTree = "<group>"; };
 		2ED357522F5AE49200B83487 /* CritiqueBrainzService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CritiqueBrainzService.swift; sourceTree = "<group>"; };
 		2ED357532F5AE49200B83487 /* MusicBrainzService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicBrainzService.swift; sourceTree = "<group>"; };
+		2ED3575B2F5B450000B83487 /* ReviewCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewCardView.swift; sourceTree = "<group>"; };
 		AAAA01 /* SecondSpin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SecondSpin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB0001 /* VinylVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VinylVaultApp.swift; sourceTree = "<group>"; };
 		BB0002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -155,6 +157,7 @@
 		DD0007 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				DD0010 /* Components */,
 				BB0002 /* ContentView.swift */,
 				BB0003 /* HomeView.swift */,
 				BB0004 /* CollectionView.swift */,
@@ -189,6 +192,14 @@
 				BB0027 /* Localizable.strings */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		DD0010 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				2ED3575B2F5B450000B83487 /* ReviewCardView.swift */,
+			);
+			path = Components;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -266,6 +277,7 @@
 			files = (
 				AA0001 /* VinylVaultApp.swift in Sources */,
 				AA0002 /* ContentView.swift in Sources */,
+				2ED3575A2F5B450000B83487 /* ReviewCardView.swift in Sources */,
 				2ED357542F5AE49200B83487 /* MusicBrainzService.swift in Sources */,
 				2ED357552F5AE49200B83487 /* CritiqueBrainzService.swift in Sources */,
 				AA0003 /* HomeView.swift in Sources */,
