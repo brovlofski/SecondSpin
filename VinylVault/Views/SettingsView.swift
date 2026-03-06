@@ -284,11 +284,17 @@ struct SettingsView: View {
                     } label: {
                         Label(NSLocalizedString("Clear Image Cache", comment: ""), systemImage: "trash")
                     }
+                    
+                    Button(role: .destructive) {
+                        WikipediaService.shared.clearCache()
+                    } label: {
+                        Label(NSLocalizedString("Clear Wikipedia Cache", comment: ""), systemImage: "doc.text.fill.badge.ellipsis")
+                    }
                 } header: {
-                    Label(NSLocalizedString("Image Cache", comment: ""), systemImage: "photo.stack")
+                    Label(NSLocalizedString("Cache", comment: ""), systemImage: "externaldrive.fill.badge.checkmark")
                 } footer: {
                     Text(NSLocalizedString(
-                        "Cached images are stored on disk for faster loading. Clearing the cache frees up storage.",
+                        "Cached images and Wikipedia data are stored for faster loading. Clearing caches frees up storage and forces fresh data to be downloaded.",
                         comment: ""))
                 }
 
