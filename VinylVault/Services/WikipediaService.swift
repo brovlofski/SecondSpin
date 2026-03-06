@@ -570,7 +570,7 @@ class WikipediaService {
         var scores: [AlbumReviewScore] = []
         
         // Match patterns like: | rev1 = Source | rev1score = Rating
-        let pattern = "\\|\\s*rev(\\d+)\\s*=\\s*([^|\\n]+)\\s*\\|\\s*rev\\1score\\s*=\\s*([^|\\n}]+)"
+        let pattern = "\\|\\s*rev(\\d+)\\s*=\\s*([^|\\n]+?)\\s*\\|\\s*rev\\1score\\s*=\\s*([^|\\n}]+)"
         
         guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
             return nil
@@ -583,8 +583,15 @@ class WikipediaService {
                let sourceRange = Range(match.range(at: 2), in: text),
                let ratingRange = Range(match.range(at: 3), in: text) {
                 
-                let source = String(text[sourceRange]).trimmingCharacters(in: .whitespacesAndNewlines)
-                let rating = String(text[ratingRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                var source = String(text[sourceRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                var rating = String(text[ratingRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                // Extract rating value from {{rating|X|5}} BEFORE cleaning templates
+                if rating.contains("{{rating") || rating.contains("{{Rating") {
+                    if let ratingValue = extractRatingValue(from: rating) {
+                        rating = ratingValue
+                    }
+                }
                 
                 // Clean up wikitext artifacts
                 let cleanSource = cleanWikitext(source)
@@ -597,6 +604,30 @@ class WikipediaService {
         }
         
         return scores.isEmpty ? nil : scores
+    }
+    
+    /// Extracts numeric value from {{rating|X|5}} or {{Rating|X|5}} templates
+    private func extractRatingValue(from text: String) -> String? {
+        // Match {{rating|X|5}} or {{Rating|X|Y}}
+        let pattern = "\\{\\{[Rr]ating\\|([0-9.]+)\\|([0-9.]+)\\}\\}"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              match.numberOfRanges >= 3,
+              let valueRange = Range(match.range(at: 1), in: text),
+              let maxRange = Range(match.range(at: 2), in: text) else {
+            return nil
+        }
+        
+        let value = String(text[valueRange])
+        let max = String(text[maxRange])
+        
+        // Convert to 10-point scale if it's a 5-star rating
+        if max == "5", let val = Double(value) {
+            let score = (val / 5.0) * 10.0
+            return String(format: "%.1f/10", score).replacingOccurrences(of: ".0/10", with: "/10")
+        }
+        
+        return "\(value)/\(max)"
     }
     
     /// Extracts review scores from {| wikitable format
