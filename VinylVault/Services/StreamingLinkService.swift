@@ -23,8 +23,8 @@ import UIKit
 // Fill in your Spotify Developer Dashboard client credentials.
 // https://developer.spotify.com/dashboard
 private enum SpotifyConfig {
-    static let clientID     = ""   // e.g. "abc123def456"
-    static let clientSecret = ""   // e.g. "xyz789uvw012"
+    static let clientID     = "ee3582a89bfd4ab49fcd07430f7f2d7c"
+    static let clientSecret = "e8da8668ab1948149ae16db72352b4f5"
     static var isConfigured: Bool { !clientID.isEmpty && !clientSecret.isEmpty }
 }
 
