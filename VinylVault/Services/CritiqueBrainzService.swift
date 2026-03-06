@@ -21,7 +21,9 @@ actor CritiqueBrainzService {
     private let minimumRequestInterval: TimeInterval = 1.0
     
     private init() {
-        loadCache()
+        Task {
+            await loadCache()
+        }
     }
     
     // MARK: - Public Methods
@@ -87,7 +89,7 @@ actor CritiqueBrainzService {
     
     // MARK: - Cache Persistence
     
-    private func loadCache() {
+    private func loadCache() async {
         let defaults = UserDefaults.standard
         
         if let data = defaults.data(forKey: "CritiqueBrainzCache"),

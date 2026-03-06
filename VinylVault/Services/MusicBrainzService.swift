@@ -23,7 +23,9 @@ actor MusicBrainzService {
     private let minimumRequestInterval: TimeInterval = 1.0
     
     private init() {
-        loadCache()
+        Task {
+            await loadCache()
+        }
     }
     
     // MARK: - Public Methods
@@ -172,7 +174,7 @@ actor MusicBrainzService {
     
     // MARK: - Cache Persistence
     
-    private func loadCache() {
+    private func loadCache() async {
         let defaults = UserDefaults.standard
         
         if let mbidData = defaults.data(forKey: "MusicBrainzMBIDCache"),
