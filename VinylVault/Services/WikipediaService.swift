@@ -583,7 +583,7 @@ class WikipediaService {
                let sourceRange = Range(match.range(at: 2), in: text),
                let ratingRange = Range(match.range(at: 3), in: text) {
                 
-                var source = String(text[sourceRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                let source = String(text[sourceRange]).trimmingCharacters(in: .whitespacesAndNewlines)
                 var rating = String(text[ratingRange]).trimmingCharacters(in: .whitespacesAndNewlines)
                 
                 // Extract rating value from {{rating|X|5}} BEFORE cleaning templates
@@ -593,10 +593,18 @@ class WikipediaService {
                     }
                 }
                 
-                // Clean up wikitext artifacts
-                let cleanSource = cleanWikitext(source)
+                // Clean up wikitext artifacts - but DON'T clean the source yet
                 let cleanRating = cleanWikitext(rating)
                 
+                // Only clean source lightly to preserve the publication name
+                let cleanSource = source
+                    .replacingOccurrences(of: "\\[\\[([^|\\]]+)\\|([^\\]]+)\\]\\]", with: "$2", options: .regularExpression)
+                    .replacingOccurrences(of: "\\[\\[([^\\]]+)\\]\\]", with: "$1", options: .regularExpression)
+                    .replacingOccurrences(of: "'''", with: "")
+                    .replacingOccurrences(of: "''", with: "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                // Only add if both are non-empty after cleaning
                 if !cleanSource.isEmpty && !cleanRating.isEmpty {
                     scores.append(AlbumReviewScore(source: cleanSource, rating: cleanRating))
                 }
