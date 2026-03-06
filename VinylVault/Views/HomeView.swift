@@ -17,6 +17,8 @@ struct HomeView: View {
     @State private var isLoadingWikipedia = false
     @State private var showFullDescription = false
     @State private var scrollOffset: CGFloat = 0
+    @State private var dragOffset: CGFloat = 0
+    @State private var isDragging = false
     
     private let albumOfTheDayKey = "albumOfTheDayKey"
     private let albumOfTheDayDateKey = "albumOfTheDayDateKey"
@@ -116,9 +118,15 @@ struct HomeView: View {
     @ViewBuilder
     private func albumOfTheDayCard(album: Release) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Album of the Day")
-                .font(.title2)
-                .fontWeight(.bold)
+            HStack {
+                Text("Album of the Day")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                Spacer()
+                Text("Swipe to change")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
             
             VStack(spacing: 16) {
                 // Album Cover
@@ -198,27 +206,15 @@ struct HomeView: View {
                     }
                 }
                 
-                // Action Buttons
-                HStack(spacing: 12) {
-                    NavigationLink(destination: ReleaseDetailView(release: album)) {
-                        Text("View Details")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.accentColor)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    
-                    Button(action: { selectAlbumOfTheDay(forceRefresh: true) }) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.headline)
-                            .foregroundColor(.black)
-                            .padding()
-                            .aspectRatio(1, contentMode: .fit)
-                            .background(Color.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
+                // Action Button
+                NavigationLink(destination: ReleaseDetailView(release: album)) {
+                    Text("View Details")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.accentColor)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
             }
             .padding()
@@ -226,6 +222,37 @@ struct HomeView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
         }
+        .offset(x: dragOffset)
+        .rotationEffect(.degrees(Double(dragOffset) / 20))
+        .opacity(isDragging ? 0.8 : 1.0)
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    isDragging = true
+                    dragOffset = value.translation.width
+                }
+                .onEnded { value in
+                    let threshold: CGFloat = 100
+                    if abs(value.translation.width) > threshold {
+                        // Swipe dismissed - animate out and refresh
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            dragOffset = value.translation.width > 0 ? 500 : -500
+                        }
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            dragOffset = 0
+                            isDragging = false
+                            selectAlbumOfTheDay(forceRefresh: true)
+                        }
+                    } else {
+                        // Not enough swipe - bounce back
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            dragOffset = 0
+                            isDragging = false
+                        }
+                    }
+                }
+        )
     }
     
     // MARK: - Empty State
