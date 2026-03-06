@@ -151,6 +151,28 @@ class WikipediaService {
 
     private let wpBase = "https://en.wikipedia.org/w/api.php"
     private let wdAPI  = "https://www.wikidata.org/w/api.php"
+    
+    // Pre-compiled regex patterns for performance
+    private static let templateRegex = try? NSRegularExpression(pattern: "\\{\\{[^{}]*\\}\\}", options: [])
+    private static let incompleteTemplateStartRegex = try? NSRegularExpression(pattern: "\\{\\{[^}]*$", options: [])
+    private static let incompleteTemplateEndRegex = try? NSRegularExpression(pattern: "^[^{]*\\}\\}", options: [])
+    private static let htmlCommentRegex = try? NSRegularExpression(pattern: "<!--[^>]*-->", options: [])
+    private static let refTagRegex = try? NSRegularExpression(pattern: "<ref[^>]*>.*?</ref>", options: [])
+    private static let refTagSelfClosingRegex = try? NSRegularExpression(pattern: "<ref[^>/]*/>", options: [])
+    private static let wikilinkWithPipeRegex = try? NSRegularExpression(pattern: "\\[\\[([^|\\]]+)\\|([^\\]]+)\\]\\]", options: [])
+    private static let wikilinkRegex = try? NSRegularExpression(pattern: "\\[\\[([^\\]]+)\\]\\]", options: [])
+    private static let externalLinkWithTextRegex = try? NSRegularExpression(pattern: "\\[https?://[^\\s\\]]+ ([^\\]]+)\\]", options: [])
+    private static let externalLinkRegex = try? NSRegularExpression(pattern: "\\[https?://[^\\s\\]]+\\]", options: [])
+    private static let htmlTagRegex = try? NSRegularExpression(pattern: "<[^>]+>", options: [])
+    private static let styleAttrRegex = try? NSRegularExpression(pattern: "\\|\\s*style\\s*=\\s*[^|\\n]+", options: [])
+    private static let classAttrRegex = try? NSRegularExpression(pattern: "\\|\\s*class\\s*=\\s*[^|\\n]+", options: [])
+    private static let alignAttrRegex = try? NSRegularExpression(pattern: "\\|\\s*align\\s*=\\s*[^|\\n]+", options: [])
+    private static let bracesRegex = try? NSRegularExpression(pattern: "[{}]+", options: [])
+    private static let whitespaceRegex = try? NSRegularExpression(pattern: "\\s+", options: [])
+    private static let ratingTemplateRegex = try? NSRegularExpression(pattern: "\\{\\{[Rr]ating\\|([0-9.]+)\\|([0-9.]+)\\}\\}", options: [])
+    private static let starRatingTextRegex = try? NSRegularExpression(pattern: "([0-9.]+)\\s*/\\s*5\\s*(?:stars?)?", options: [])
+    private static let starRatingTextNumRegex = try? NSRegularExpression(pattern: "[0-9.]+", options: [])
+    private static let albumRatingsPatternRegex = try? NSRegularExpression(pattern: "\\|\\s*rev(\\d+)\\s*=\\s*([^|\\n]+?)\\s*\\|\\s*rev\\1score\\s*=\\s*([^|\\n}]+)", options: [])
 
     /// Wikidata Q-IDs accepted for P31 (instance of)
     private let albumQIDs: Set<String> = [
@@ -569,10 +591,8 @@ class WikipediaService {
         
         var scores: [AlbumReviewScore] = []
         
-        // Match patterns like: | rev1 = Source | rev1score = Rating
-        let pattern = "\\|\\s*rev(\\d+)\\s*=\\s*([^|\\n]+?)\\s*\\|\\s*rev\\1score\\s*=\\s*([^|\\n}]+)"
-        
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+        // Use pre-compiled regex for album ratings pattern
+        guard let regex = Self.albumRatingsPatternRegex else {
             return nil
         }
         
@@ -616,9 +636,8 @@ class WikipediaService {
     
     /// Extracts numeric value from {{rating|X|5}} or {{Rating|X|5}} templates
     private func extractRatingValue(from text: String) -> String? {
-        // Match {{rating|X|5}} or {{Rating|X|Y}}
-        let pattern = "\\{\\{[Rr]ating\\|([0-9.]+)\\|([0-9.]+)\\}\\}"
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: []),
+        // Use pre-compiled regex
+        guard let regex = Self.ratingTemplateRegex,
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               match.numberOfRanges >= 3,
               let valueRange = Range(match.range(at: 1), in: text),
@@ -713,6 +732,7 @@ class WikipediaService {
     /// Cleans wikitext markup from a string
     private func cleanWikitext(_ text: String) -> String {
         var cleaned = text
+        let range = NSRange(cleaned.startIndex..., in: cleaned)
         
         // Remove templates {{template}} - must be done first, including nested ones
         // Use a loop to handle nested templates
@@ -721,50 +741,98 @@ class WikipediaService {
         while cleaned != previousCleaned && iterations < 10 {
             previousCleaned = cleaned
             // Remove {{...}} including nested content
-            cleaned = cleaned.replacingOccurrences(of: "\\{\\{[^{}]*\\}\\}", with: "", options: .regularExpression)
+            if let regex = Self.templateRegex {
+                let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+                cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "")
+            }
             iterations += 1
         }
         
-        // Remove incomplete template markers (e.g., "{{sfn", "{{rating", etc.)
-        cleaned = cleaned.replacingOccurrences(of: "\\{\\{[^}]*$", with: "", options: .regularExpression)
-        cleaned = cleaned.replacingOccurrences(of: "^[^{]*\\}\\}", with: "", options: .regularExpression)
+        // Remove incomplete template markers using pre-compiled regex
+        if let regex = Self.incompleteTemplateStartRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "")
+        }
+        if let regex = Self.incompleteTemplateEndRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "")
+        }
         
-        // Remove HTML comments <!-- -->
-        cleaned = cleaned.replacingOccurrences(of: "<!--[^>]*-->", with: "", options: .regularExpression)
+        // Remove HTML comments using pre-compiled regex
+        if let regex = Self.htmlCommentRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "")
+        }
         
-        // Remove ref tags <ref>...</ref> and <ref ... />
-        cleaned = cleaned.replacingOccurrences(of: "<ref[^>]*>.*?</ref>", with: "", options: .regularExpression)
-        cleaned = cleaned.replacingOccurrences(of: "<ref[^>/]*/>", with: "", options: .regularExpression)
+        // Remove ref tags using pre-compiled regex
+        if let regex = Self.refTagRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "")
+        }
+        if let regex = Self.refTagSelfClosingRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "")
+        }
         
-        // Remove wikilinks [[Link|Display]] -> Display or [[Link]] -> Link
-        cleaned = cleaned.replacingOccurrences(of: "\\[\\[([^|\\]]+)\\|([^\\]]+)\\]\\]", with: "$2", options: .regularExpression)
-        cleaned = cleaned.replacingOccurrences(of: "\\[\\[([^\\]]+)\\]\\]", with: "$1", options: .regularExpression)
+        // Remove wikilinks using pre-compiled regex
+        if let regex = Self.wikilinkWithPipeRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "$2")
+        }
+        if let regex = Self.wikilinkRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "$1")
+        }
         
-        // Remove external links [http://url Text] -> Text or [http://url] -> ""
-        cleaned = cleaned.replacingOccurrences(of: "\\[https?://[^\\s\\]]+ ([^\\]]+)\\]", with: "$1", options: .regularExpression)
-        cleaned = cleaned.replacingOccurrences(of: "\\[https?://[^\\s\\]]+\\]", with: "", options: .regularExpression)
+        // Remove external links using pre-compiled regex
+        if let regex = Self.externalLinkWithTextRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "$1")
+        }
+        if let regex = Self.externalLinkRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "")
+        }
         
-        // Remove other HTML/XML tags
-        cleaned = cleaned.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+        // Remove HTML tags using pre-compiled regex
+        if let regex = Self.htmlTagRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "")
+        }
         
         // Clean up bold/italic
         cleaned = cleaned.replacingOccurrences(of: "'''", with: "")
         cleaned = cleaned.replacingOccurrences(of: "''", with: "")
         
-        // Remove table formatting attributes
-        cleaned = cleaned.replacingOccurrences(of: "\\|\\s*style\\s*=\\s*[^|\\n]+", with: "", options: .regularExpression)
-        cleaned = cleaned.replacingOccurrences(of: "\\|\\s*class\\s*=\\s*[^|\\n]+", with: "", options: .regularExpression)
-        cleaned = cleaned.replacingOccurrences(of: "\\|\\s*align\\s*=\\s*[^|\\n]+", with: "", options: .regularExpression)
+        // Remove table formatting attributes using pre-compiled regex
+        if let regex = Self.styleAttrRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "")
+        }
+        if let regex = Self.classAttrRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "")
+        }
+        if let regex = Self.alignAttrRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "")
+        }
         
         // Convert star ratings to numeric scores
         cleaned = convertStarsToScore(cleaned)
         
-        // Remove any remaining template artifacts or braces
-        cleaned = cleaned.replacingOccurrences(of: "[{}]+", with: "", options: .regularExpression)
+        // Remove any remaining braces using pre-compiled regex
+        if let regex = Self.bracesRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: "")
+        }
         
         // Trim whitespace and collapse multiple spaces
         cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
-        cleaned = cleaned.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        if let regex = Self.whitespaceRegex {
+            let currentRange = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, range: currentRange, withTemplate: " ")
+        }
         
         return cleaned
     }
@@ -792,13 +860,20 @@ class WikipediaService {
         }
         
         // Also handle text-based star ratings like "5/5 stars" or "4.5/5"
-        if let range = result.range(of: "([0-9.]+)\\s*/\\s*5\\s*(?:stars?)?", options: .regularExpression) {
-            let match = String(result[range])
-            if let numRange = match.range(of: "[0-9.]+", options: .regularExpression),
-               let starValue = Double(match[numRange]) {
+        if let regex = Self.starRatingTextRegex,
+           let match = regex.firstMatch(in: result, range: NSRange(result.startIndex..., in: result)),
+           let matchRange = Range(match.range, in: result) {
+            let matchStr = String(result[matchRange])
+            if let numRegex = Self.starRatingTextNumRegex,
+               let numMatch = numRegex.firstMatch(in: matchStr, range: NSRange(matchStr.startIndex..., in: matchStr)),
+               let numRange = Range(numMatch.range, in: matchStr),
+               let starValue = Double(matchStr[numRange]) {
                 let score = (starValue / 5.0) * 10.0
                 let scoreString = String(format: "%.1f/10", score).replacingOccurrences(of: ".0/10", with: "/10")
-                result = result.replacingOccurrences(of: "([0-9.]+)\\s*/\\s*5\\s*(?:stars?)?", with: scoreString, options: .regularExpression)
+                if let regex = Self.starRatingTextRegex {
+                    let currentRange = NSRange(result.startIndex..., in: result)
+                    result = regex.stringByReplacingMatches(in: result, range: currentRange, withTemplate: scoreString)
+                }
             }
         }
         

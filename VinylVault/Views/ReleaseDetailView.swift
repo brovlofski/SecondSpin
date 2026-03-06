@@ -433,8 +433,7 @@ struct ReleaseDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            loadWikipediaDescription()
-            loadMusicBrainzData()
+            loadAllData()
         }
         .task {
             guard !release.streamingLinksVerified else { return }
@@ -464,113 +463,97 @@ struct ReleaseDetailView: View {
         }
     }
     
-    private func loadWikipediaDescription() {
+    private func loadAllData() {
         // Skip if already loaded
-        guard wikipediaDescription == nil, !isLoadingWikipedia else { return }
+        guard wikipediaDescription == nil && musicBrainzRating == nil else { return }
         
         isLoadingWikipedia = true
-
-        Task {
-            do {
-                // Fetch the full Wikipedia result including review scores
-                let result = try await WikipediaService.shared.resolveValidatedPage(
-                    albumTitle: release.title,
-                    artist: release.artist,
-                    year: release.year > 0 ? release.year : nil
-                )
-                
-                await MainActor.run {
-                    wikipediaDescription = result.extract
-                    wikipediaURL = result.pageURL
-                    wikipediaReviewScores = result.reviewScores
-                    isLoadingWikipedia = false
-                }
-            } catch {
-                print("Error loading Wikipedia data: \(error)")
-                await MainActor.run {
-                    isLoadingWikipedia = false
-                }
-            }
-        }
-    }
-    
-    private func loadMusicBrainzData() {
-        // Skip if already loaded
-        guard musicBrainzRating == nil, !isLoadingMusicBrainz else { return }
-        
         isLoadingMusicBrainz = true
         isLoadingReviews = true
         
         Task {
-            do {
-                // First check if we have a cached MBID
-                let cachedMBID = await MusicBrainzService.shared.getCachedMBID(
-                    artist: release.artist,
-                    album: release.title
-                )
-                
-                // If we have cached MBID, try to get cached data
-                if let mbid = cachedMBID,
-                   let cachedData = await MusicBrainzService.shared.getCachedData(mbid: mbid) {
-                    // Use cached rating and genres
-                    await MainActor.run {
-                        musicBrainzRating = cachedData.rating
-                        musicBrainzGenres = cachedData.genres
-                        musicBrainzMBID = mbid
-                        isLoadingMusicBrainz = false
-                    }
-                    
-                    // Try to get cached reviews
-                    if let cachedReviews = await CritiqueBrainzService.shared.getCachedReviews(mbid: mbid) {
-                        await MainActor.run {
-                            albumReviews = cachedReviews
-                            isLoadingReviews = false
-                        }
-                        return // All data loaded from cache, exit early
-                    } else {
-                        // Fetch reviews from API if not cached
-                        let reviews = try await CritiqueBrainzService.shared.fetchReviews(mbid: mbid, limit: 5)
-                        await MainActor.run {
-                            albumReviews = reviews
-                            isLoadingReviews = false
-                        }
-                        return
-                    }
+            // Load Wikipedia and MusicBrainz data concurrently
+            async let wikipediaResult = fetchWikipediaData()
+            async let musicBrainzResult = fetchMusicBrainzData()
+            
+            // Await both results
+            let (wikiData, mbData) = await (wikipediaResult, musicBrainzResult)
+            
+            // Update UI on main actor
+            await MainActor.run {
+                // Wikipedia data
+                if let wiki = wikiData {
+                    wikipediaDescription = wiki.extract
+                    wikipediaURL = wiki.pageURL
+                    wikipediaReviewScores = wiki.reviewScores
                 }
+                isLoadingWikipedia = false
                 
-                // No cache available, fetch from API
-                let result = try await MusicBrainzService.shared.getRatingAndGenres(
-                    artist: release.artist,
-                    album: release.title
-                )
-                
-                await MainActor.run {
-                    musicBrainzRating = result.rating
-                    musicBrainzGenres = result.genres
-                    musicBrainzMBID = result.mbid
-                    isLoadingMusicBrainz = false
+                // MusicBrainz data
+                if let mb = mbData {
+                    musicBrainzRating = mb.rating
+                    musicBrainzGenres = mb.genres
+                    musicBrainzMBID = mb.mbid
+                    albumReviews = mb.reviews
                 }
+                isLoadingMusicBrainz = false
+                isLoadingReviews = false
+            }
+        }
+    }
+    
+    private func fetchWikipediaData() async -> WikipediaAlbumResult? {
+        do {
+            return try await WikipediaService.shared.resolveValidatedPage(
+                albumTitle: release.title,
+                artist: release.artist,
+                year: release.year > 0 ? release.year : nil
+            )
+        } catch {
+            print("Error loading Wikipedia data: \(error)")
+            return nil
+        }
+    }
+    
+    private func fetchMusicBrainzData() async -> (rating: MusicBrainzRating?, genres: [MusicBrainzGenre], mbid: String?, reviews: [AlbumReview]) {
+        do {
+            // First check if we have a cached MBID
+            let cachedMBID = await MusicBrainzService.shared.getCachedMBID(
+                artist: release.artist,
+                album: release.title
+            )
+            
+            // If we have cached MBID, try to get cached data
+            if let mbid = cachedMBID,
+               let cachedData = await MusicBrainzService.shared.getCachedData(mbid: mbid) {
+                // Use cached rating and genres
                 
-                // If we got an MBID, fetch reviews
-                if let mbid = result.mbid {
-                    let reviews = try await CritiqueBrainzService.shared.fetchReviews(mbid: mbid, limit: 5)
-                    
-                    await MainActor.run {
-                        albumReviews = reviews
-                        isLoadingReviews = false
-                    }
+                // Try to get cached reviews
+                if let cachedReviews = await CritiqueBrainzService.shared.getCachedReviews(mbid: mbid) {
+                    return (cachedData.rating, cachedData.genres, mbid, cachedReviews)
                 } else {
-                    await MainActor.run {
-                        isLoadingReviews = false
-                    }
-                }
-            } catch {
-                print("Error loading MusicBrainz data: \(error)")
-                await MainActor.run {
-                    isLoadingMusicBrainz = false
-                    isLoadingReviews = false
+                    // Fetch reviews from API if not cached
+                    let reviews = (try? await CritiqueBrainzService.shared.fetchReviews(mbid: mbid, limit: 5)) ?? []
+                    return (cachedData.rating, cachedData.genres, mbid, reviews)
                 }
             }
+            
+            // No cache available, fetch from API
+            let result = try await MusicBrainzService.shared.getRatingAndGenres(
+                artist: release.artist,
+                album: release.title
+            )
+            
+            // If we got an MBID, fetch reviews
+            var reviews: [AlbumReview] = []
+            if let mbid = result.mbid {
+                reviews = (try? await CritiqueBrainzService.shared.fetchReviews(mbid: mbid, limit: 5)) ?? []
+            }
+            
+            return (result.rating, result.genres, result.mbid, reviews)
+        } catch {
+            print("Error loading MusicBrainz data: \(error)")
+            return (nil, [], nil, [])
         }
     }
     

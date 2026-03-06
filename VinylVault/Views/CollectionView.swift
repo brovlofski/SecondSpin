@@ -29,40 +29,9 @@ struct CollectionView: View {
     @State private var searchText = ""
     @State private var selectedGenre: String?
     
-    private var filteredAndSortedReleases: [Release] {
-        var filtered = releases
-        
-        // Search filter
-        if !searchText.isEmpty {
-            filtered = filtered.filter { release in
-                release.title.localizedCaseInsensitiveContains(searchText) ||
-                release.artist.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-        
-        // Genre filter
-        if let genre = selectedGenre {
-            filtered = filtered.filter { $0.genres.contains(genre) }
-        }
-        
-        // Sorting
-        switch sortOption {
-        case .artist:
-            filtered.sort { $0.artist.localizedCompare($1.artist) == .orderedAscending }
-        case .title:
-            filtered.sort { $0.title.localizedCompare($1.title) == .orderedAscending }
-        case .year:
-            filtered.sort { $0.year < $1.year }
-        case .dateAdded:
-            filtered.sort { $0.dateAdded > $1.dateAdded }
-        }
-        
-        return filtered
-    }
-    
-    private var allGenres: [String] {
-        Array(Set(releases.flatMap { $0.genres })).sorted()
-    }
+    // Cached filtered and sorted results
+    @State private var filteredAndSortedReleases: [Release] = []
+    @State private var allGenres: [String] = []
     
     var body: some View {
         NavigationStack {
@@ -116,7 +85,61 @@ struct CollectionView: View {
                     }
                 }
             }
+            .onAppear {
+                updateGenres()
+                updateFilteredReleases()
+            }
+            .onChange(of: releases.count) { _, _ in
+                updateGenres()
+                updateFilteredReleases()
+            }
+            .onChange(of: searchText) { _, _ in
+                updateFilteredReleases()
+            }
+            .onChange(of: sortOption) { _, _ in
+                updateFilteredReleases()
+            }
+            .onChange(of: selectedGenre) { _, _ in
+                updateFilteredReleases()
+            }
         }
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func updateGenres() {
+        allGenres = Array(Set(releases.flatMap { $0.genres })).sorted()
+    }
+    
+    private func updateFilteredReleases() {
+        var filtered = releases
+        
+        // Search filter
+        if !searchText.isEmpty {
+            filtered = filtered.filter { release in
+                release.title.localizedCaseInsensitiveContains(searchText) ||
+                release.artist.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+        
+        // Genre filter
+        if let genre = selectedGenre {
+            filtered = filtered.filter { $0.genres.contains(genre) }
+        }
+        
+        // Sorting
+        switch sortOption {
+        case .artist:
+            filtered.sort { $0.artist.localizedCompare($1.artist) == .orderedAscending }
+        case .title:
+            filtered.sort { $0.title.localizedCompare($1.title) == .orderedAscending }
+        case .year:
+            filtered.sort { $0.year < $1.year }
+        case .dateAdded:
+            filtered.sort { $0.dateAdded > $1.dateAdded }
+        }
+        
+        filteredAndSortedReleases = filtered
     }
     
     // MARK: - Grid View

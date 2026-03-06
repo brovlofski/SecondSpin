@@ -311,9 +311,13 @@ struct HomeView: View {
            let savedAlbum = releases.first(where: { $0.discogsId == savedId }) {
             // Use saved album
             albumOfTheDay = savedAlbum
-            loadWikipediaDescription(for: savedAlbum)
+            // Only load Wikipedia if we don't have it yet
+            if wikipediaDescription == nil {
+                loadWikipediaDescription(for: savedAlbum)
+            }
         } else {
-            // Select new random album
+            // Select new random album - clear previous Wikipedia data
+            wikipediaDescription = nil
             if let randomAlbum = releases.randomElement() {
                 albumOfTheDay = randomAlbum
                 UserDefaults.standard.set(randomAlbum.discogsId, forKey: albumOfTheDayKey)
@@ -324,8 +328,10 @@ struct HomeView: View {
     }
     
     private func loadWikipediaDescription(for release: Release) {
+        // Skip if already loaded for this release
+        guard wikipediaDescription == nil else { return }
+        
         isLoadingWikipedia = true
-        wikipediaDescription = nil
         
         Task {
             do {
