@@ -709,11 +709,17 @@ class WikipediaService {
         // Remove templates {{template}} - must be done first, including nested ones
         // Use a loop to handle nested templates
         var previousCleaned = ""
-        while cleaned != previousCleaned {
+        var iterations = 0
+        while cleaned != previousCleaned && iterations < 10 {
             previousCleaned = cleaned
             // Remove {{...}} including nested content
             cleaned = cleaned.replacingOccurrences(of: "\\{\\{[^{}]*\\}\\}", with: "", options: .regularExpression)
+            iterations += 1
         }
+        
+        // Remove incomplete template markers (e.g., "{{sfn", "{{rating", etc.)
+        cleaned = cleaned.replacingOccurrences(of: "\\{\\{[^}]*$", with: "", options: .regularExpression)
+        cleaned = cleaned.replacingOccurrences(of: "^[^{]*\\}\\}", with: "", options: .regularExpression)
         
         // Remove HTML comments <!-- -->
         cleaned = cleaned.replacingOccurrences(of: "<!--[^>]*-->", with: "", options: .regularExpression)
@@ -744,6 +750,9 @@ class WikipediaService {
         
         // Convert star ratings to numeric scores
         cleaned = convertStarsToScore(cleaned)
+        
+        // Remove any remaining template artifacts or braces
+        cleaned = cleaned.replacingOccurrences(of: "[{}]+", with: "", options: .regularExpression)
         
         // Trim whitespace and collapse multiple spaces
         cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
