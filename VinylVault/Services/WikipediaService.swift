@@ -675,39 +675,86 @@ class WikipediaService {
     private func cleanWikitext(_ text: String) -> String {
         var cleaned = text
         
-        // Remove wikilinks [[Link|Display]] -> Display or [[Link]] -> Link
-        cleaned = cleaned.replacingOccurrences(of: "\\[\\[([^|\\]]+)\\|([^\\]]+)\\]\\]", with: "$2", options: .regularExpression)
-        cleaned = cleaned.replacingOccurrences(of: "\\[\\[([^\\]]+)\\]\\]", with: "$1", options: .regularExpression)
-        
-        // Remove external links [http://url Text] -> Text
-        cleaned = cleaned.replacingOccurrences(of: "\\[https?://[^\\s\\]]+ ([^\\]]+)\\]", with: "$1", options: .regularExpression)
-        cleaned = cleaned.replacingOccurrences(of: "\\[https?://[^\\s\\]]+\\]", with: "", options: .regularExpression)
-        
-        // Remove templates {{template}}
-        cleaned = cleaned.replacingOccurrences(of: "\\{\\{[^}]+\\}\\}", with: "", options: .regularExpression)
+        // Remove templates {{template}} - must be done first, including nested ones
+        // Use a loop to handle nested templates
+        var previousCleaned = ""
+        while cleaned != previousCleaned {
+            previousCleaned = cleaned
+            // Remove {{...}} including nested content
+            cleaned = cleaned.replacingOccurrences(of: "\\{\\{[^{}]*\\}\\}", with: "", options: .regularExpression)
+        }
         
         // Remove HTML comments <!-- -->
         cleaned = cleaned.replacingOccurrences(of: "<!--[^>]*-->", with: "", options: .regularExpression)
         
-        // Remove ref tags <ref>...</ref>
+        // Remove ref tags <ref>...</ref> and <ref ... />
         cleaned = cleaned.replacingOccurrences(of: "<ref[^>]*>.*?</ref>", with: "", options: .regularExpression)
-        cleaned = cleaned.replacingOccurrences(of: "<ref[^>]*/>", with: "", options: .regularExpression)
+        cleaned = cleaned.replacingOccurrences(of: "<ref[^>/]*/>", with: "", options: .regularExpression)
         
-        // Remove other HTML tags
+        // Remove wikilinks [[Link|Display]] -> Display or [[Link]] -> Link
+        cleaned = cleaned.replacingOccurrences(of: "\\[\\[([^|\\]]+)\\|([^\\]]+)\\]\\]", with: "$2", options: .regularExpression)
+        cleaned = cleaned.replacingOccurrences(of: "\\[\\[([^\\]]+)\\]\\]", with: "$1", options: .regularExpression)
+        
+        // Remove external links [http://url Text] -> Text or [http://url] -> ""
+        cleaned = cleaned.replacingOccurrences(of: "\\[https?://[^\\s\\]]+ ([^\\]]+)\\]", with: "$1", options: .regularExpression)
+        cleaned = cleaned.replacingOccurrences(of: "\\[https?://[^\\s\\]]+\\]", with: "", options: .regularExpression)
+        
+        // Remove other HTML/XML tags
         cleaned = cleaned.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
         
         // Clean up bold/italic
         cleaned = cleaned.replacingOccurrences(of: "'''", with: "")
         cleaned = cleaned.replacingOccurrences(of: "''", with: "")
         
-        // Remove table formatting
+        // Remove table formatting attributes
         cleaned = cleaned.replacingOccurrences(of: "\\|\\s*style\\s*=\\s*[^|\\n]+", with: "", options: .regularExpression)
         cleaned = cleaned.replacingOccurrences(of: "\\|\\s*class\\s*=\\s*[^|\\n]+", with: "", options: .regularExpression)
+        cleaned = cleaned.replacingOccurrences(of: "\\|\\s*align\\s*=\\s*[^|\\n]+", with: "", options: .regularExpression)
         
-        // Trim whitespace
+        // Convert star ratings to numeric scores
+        cleaned = convertStarsToScore(cleaned)
+        
+        // Trim whitespace and collapse multiple spaces
         cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        cleaned = cleaned.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
         
         return cleaned
+    }
+    
+    /// Converts star ratings to numeric scores (e.g., ★★★★★ -> 10/10)
+    private func convertStarsToScore(_ text: String) -> String {
+        var result = text
+        
+        // Count filled stars (★) and half stars (½)
+        let filledStars = result.components(separatedBy: "★").count - 1
+        let halfStars = result.components(separatedBy: "½").count - 1
+        
+        // If we have stars, convert to score
+        if filledStars > 0 || halfStars > 0 {
+            let totalStars = Double(filledStars) + (Double(halfStars) * 0.5)
+            
+            // Convert 5-star scale to 10-point scale
+            if totalStars <= 5.0 {
+                let score = (totalStars / 5.0) * 10.0
+                let scoreString = String(format: "%.1f/10", score).replacingOccurrences(of: ".0/10", with: "/10")
+                
+                // Replace all star characters with the score
+                result = result.replacingOccurrences(of: "[★☆½]+", with: scoreString, options: .regularExpression)
+            }
+        }
+        
+        // Also handle text-based star ratings like "5/5 stars" or "4.5/5"
+        if let range = result.range(of: "([0-9.]+)\\s*/\\s*5\\s*(?:stars?)?", options: .regularExpression) {
+            let match = String(result[range])
+            if let numRange = match.range(of: "[0-9.]+", options: .regularExpression),
+               let starValue = Double(match[numRange]) {
+                let score = (starValue / 5.0) * 10.0
+                let scoreString = String(format: "%.1f/10", score).replacingOccurrences(of: ".0/10", with: "/10")
+                result = result.replacingOccurrences(of: "([0-9.]+)\\s*/\\s*5\\s*(?:stars?)?", with: scoreString, options: .regularExpression)
+            }
+        }
+        
+        return result
     }
 
     // MARK: - String utilities
