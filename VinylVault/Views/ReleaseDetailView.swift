@@ -17,6 +17,7 @@ struct ReleaseDetailView: View {
     @State private var showDeleteConfirmation = false
     @State private var wikipediaDescription: String?
     @State private var wikipediaURL: URL?
+    @State private var wikipediaReviewScores: [AlbumReviewScore] = []
     @State private var isLoadingWikipedia = false
     @State private var showFullDescription = false
     @State private var selectedCopy: Copy?
@@ -297,6 +298,52 @@ struct ReleaseDetailView: View {
                     Divider()
                 }
                 
+                // Critical Reception Section (Wikipedia Professional Ratings)
+                if !wikipediaReviewScores.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Critical Reception")
+                            .font(.headline)
+                        
+                        VStack(spacing: 12) {
+                            ForEach(wikipediaReviewScores) { score in
+                                HStack(alignment: .top) {
+                                    Text(score.source)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    
+                                    Text(score.rating)
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.trailing)
+                                }
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 12)
+                                .background(Color(.systemGray6))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                        }
+                        
+                        if let wikiURL = wikipediaURL {
+                            HStack {
+                                Spacer()
+                                Link(destination: wikiURL) {
+                                    HStack(spacing: 4) {
+                                        Text("View on Wikipedia")
+                                            .font(.caption)
+                                        Image(systemName: "arrow.up.right")
+                                            .font(.caption2)
+                                    }
+                                    .foregroundColor(.accentColor)
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Divider()
+                }
+                
                 // Wikipedia Section
                 if isLoadingWikipedia {
                     ProgressView()
@@ -424,24 +471,25 @@ struct ReleaseDetailView: View {
         isLoadingWikipedia = true
 
         Task {
-            async let descriptionResult = WikipediaService.shared.fetchAlbumDescription(
-                albumTitle: release.title,
-                artist: release.artist,
-                year: release.year > 0 ? release.year : nil
-            )
-            async let urlResult = WikipediaService.shared.fetchAlbumPageURL(
-                albumTitle: release.title,
-                artist: release.artist,
-                year: release.year > 0 ? release.year : nil
-            )
-
-            let description = try? await descriptionResult
-            let url = await urlResult
-
-            await MainActor.run {
-                wikipediaDescription = description
-                wikipediaURL = url
-                isLoadingWikipedia = false
+            do {
+                // Fetch the full Wikipedia result including review scores
+                let result = try await WikipediaService.shared.resolveValidatedPage(
+                    albumTitle: release.title,
+                    artist: release.artist,
+                    year: release.year > 0 ? release.year : nil
+                )
+                
+                await MainActor.run {
+                    wikipediaDescription = result.extract
+                    wikipediaURL = result.pageURL
+                    wikipediaReviewScores = result.reviewScores
+                    isLoadingWikipedia = false
+                }
+            } catch {
+                print("Error loading Wikipedia data: \(error)")
+                await MainActor.run {
+                    isLoadingWikipedia = false
+                }
             }
         }
     }

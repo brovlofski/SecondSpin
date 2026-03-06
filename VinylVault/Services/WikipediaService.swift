@@ -25,6 +25,17 @@ struct WikipediaAlbumResult: Codable {
     let wikidataID: String?
     let extract: String
     let pageURL: URL?
+    let reviewScores: [AlbumReviewScore]
+}
+
+struct AlbumReviewScore: Codable, Identifiable {
+    let id = UUID()
+    let source: String
+    let rating: String
+    
+    enum CodingKeys: String, CodingKey {
+        case source, rating
+    }
 }
 
 // MARK: - Errors
@@ -66,6 +77,24 @@ private struct WPExtractResponse: Decodable {
         let title: String
         let extract: String?
         let fullurl: String?
+    }
+}
+
+private struct WPParseResponse: Decodable {
+    let parse: ParseContent?
+    struct ParseContent: Decodable {
+        let title: String
+        let pageid: Int
+        let wikitext: WikitextContent?
+        enum CodingKeys: String, CodingKey {
+            case title, pageid, wikitext
+        }
+    }
+    struct WikitextContent: Decodable {
+        let content: String
+        enum CodingKeys: String, CodingKey {
+            case content = "*"
+        }
     }
 }
 
@@ -164,7 +193,7 @@ class WikipediaService {
 
     // MARK: - Main pipeline
 
-    private func resolveValidatedPage(albumTitle: String, artist: String, year: Int?) async throws -> WikipediaAlbumResult {
+    func resolveValidatedPage(albumTitle: String, artist: String, year: Int?) async throws -> WikipediaAlbumResult {
         let key = "\(albumTitle.lowercased())|\(artist.lowercased())"
         if let cached = cacheQueue.sync(execute: { cache[key] }) { return cached }
 
@@ -450,10 +479,235 @@ class WikipediaService {
             pageURL = URL(string: "https://en.wikipedia.org/wiki/\(enc)")
         }
 
+        // Fetch review scores from wikitext
+        let reviewScores = await fetchReviewScores(pageTitle: page.title)
+
         return WikipediaAlbumResult(pageTitle: page.title,
                                     wikidataID: wikidataID,
                                     extract: extract,
-                                    pageURL: pageURL)
+                                    pageURL: pageURL,
+                                    reviewScores: reviewScores)
+    }
+    
+    // MARK: - Review score extraction
+    
+    /// Fetches and parses professional review scores from Wikipedia wikitext
+    private func fetchReviewScores(pageTitle: String) async -> [AlbumReviewScore] {
+        guard let wikitext = await fetchWikitext(pageTitle: pageTitle) else {
+            return []
+        }
+        return parseReviewScores(from: wikitext)
+    }
+    
+    /// Fetches the raw wikitext for a Wikipedia page
+    private func fetchWikitext(pageTitle: String) async -> String? {
+        var c = URLComponents(string: wpBase)
+        c?.queryItems = [
+            URLQueryItem(name: "action",  value: "parse"),
+            URLQueryItem(name: "page",    value: pageTitle),
+            URLQueryItem(name: "prop",    value: "wikitext"),
+            URLQueryItem(name: "format",  value: "json"),
+            URLQueryItem(name: "origin",  value: "*"),
+        ]
+        guard let url = c?.url,
+              let (data, _) = try? await URLSession.shared.data(from: url),
+              let resp = try? JSONDecoder().decode(WPParseResponse.self, from: data) else {
+            return nil
+        }
+        return resp.parse?.wikitext?.content
+    }
+    
+    /// Parses professional review scores from Wikipedia wikitext
+    /// Looks for the "Professional ratings" or "Reception" table with Source/Rating columns
+    private func parseReviewScores(from wikitext: String) -> [AlbumReviewScore] {
+        var scores: [AlbumReviewScore] = []
+        
+        // Find the review table section - look for common section headers
+        let sectionPatterns = [
+            "==\\s*Professional\\s+ratings?\\s*==",
+            "==\\s*Critical\\s+reception\\s*==",
+            "==\\s*Reception\\s*==",
+            "==\\s*Reviews\\s*==",
+        ]
+        
+        var relevantSection: String?
+        for pattern in sectionPatterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+               let match = regex.firstMatch(in: wikitext, range: NSRange(wikitext.startIndex..., in: wikitext)) {
+                let startIndex = wikitext.index(wikitext.startIndex, offsetBy: match.range.location)
+                // Extract from this header to the next == header or end
+                if let nextHeaderRange = wikitext.range(of: "\\n==", options: [.regularExpression], range: startIndex..<wikitext.endIndex) {
+                    relevantSection = String(wikitext[startIndex..<nextHeaderRange.lowerBound])
+                } else {
+                    relevantSection = String(wikitext[startIndex...])
+                }
+                break
+            }
+        }
+        
+        guard let section = relevantSection else { return [] }
+        
+        // Look for various table formats used in Wikipedia
+        // Format 1: {{Album ratings}} template
+        if let albumRatings = extractAlbumRatingsTemplate(from: section) {
+            return albumRatings
+        }
+        
+        // Format 2: {| class="wikitable" style table
+        if let tableScores = extractWikitableScores(from: section) {
+            return tableScores
+        }
+        
+        return scores
+    }
+    
+    /// Extracts review scores from {{Album ratings}} template
+    private func extractAlbumRatingsTemplate(from text: String) -> [AlbumReviewScore]? {
+        guard text.contains("{{Album ratings") || text.contains("{{album ratings") else {
+            return nil
+        }
+        
+        var scores: [AlbumReviewScore] = []
+        
+        // Match patterns like: | rev1 = Source | rev1score = Rating
+        let pattern = "\\|\\s*rev(\\d+)\\s*=\\s*([^|\\n]+)\\s*\\|\\s*rev\\1score\\s*=\\s*([^|\\n}]+)"
+        
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            return nil
+        }
+        
+        let matches = regex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+        
+        for match in matches {
+            if match.numberOfRanges >= 4,
+               let sourceRange = Range(match.range(at: 2), in: text),
+               let ratingRange = Range(match.range(at: 3), in: text) {
+                
+                let source = String(text[sourceRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                let rating = String(text[ratingRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                // Clean up wikitext artifacts
+                let cleanSource = cleanWikitext(source)
+                let cleanRating = cleanWikitext(rating)
+                
+                if !cleanSource.isEmpty && !cleanRating.isEmpty {
+                    scores.append(AlbumReviewScore(source: cleanSource, rating: cleanRating))
+                }
+            }
+        }
+        
+        return scores.isEmpty ? nil : scores
+    }
+    
+    /// Extracts review scores from {| wikitable format
+    private func extractWikitableScores(from text: String) -> [AlbumReviewScore]? {
+        guard text.contains("{|") && text.contains("|}") else {
+            return nil
+        }
+        
+        var scores: [AlbumReviewScore] = []
+        
+        // Find table rows (|-) with cells (| or ||)
+        let lines = text.components(separatedBy: .newlines)
+        var inTable = false
+        var currentSource: String?
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            
+            if trimmed.hasPrefix("{|") {
+                inTable = true
+                continue
+            }
+            if trimmed.hasPrefix("|}") {
+                inTable = false
+                break
+            }
+            
+            if !inTable { continue }
+            
+            // Skip header rows and formatting rows
+            if trimmed.hasPrefix("!") || trimmed.hasPrefix("|-") || trimmed.hasPrefix("|+") {
+                currentSource = nil
+                continue
+            }
+            
+            // Parse table cells
+            if trimmed.hasPrefix("|") {
+                let cellContent = String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces)
+                
+                // Handle || separator for multiple cells in one line
+                if cellContent.contains("||") {
+                    let cells = cellContent.components(separatedBy: "||")
+                    if cells.count >= 2 {
+                        let source = cleanWikitext(cells[0])
+                        let rating = cleanWikitext(cells[1])
+                        if !source.isEmpty && !rating.isEmpty &&
+                           !source.lowercased().contains("source") &&
+                           !source.lowercased().contains("publication") {
+                            scores.append(AlbumReviewScore(source: source, rating: rating))
+                        }
+                    }
+                } else {
+                    // Single cell - alternate between source and rating
+                    if let source = currentSource {
+                        let rating = cleanWikitext(cellContent)
+                        if !rating.isEmpty {
+                            scores.append(AlbumReviewScore(source: source, rating: rating))
+                        }
+                        currentSource = nil
+                    } else {
+                        let source = cleanWikitext(cellContent)
+                        if !source.isEmpty &&
+                           !source.lowercased().contains("source") &&
+                           !source.lowercased().contains("publication") {
+                            currentSource = source
+                        }
+                    }
+                }
+            }
+        }
+        
+        return scores.isEmpty ? nil : scores
+    }
+    
+    /// Cleans wikitext markup from a string
+    private func cleanWikitext(_ text: String) -> String {
+        var cleaned = text
+        
+        // Remove wikilinks [[Link|Display]] -> Display or [[Link]] -> Link
+        cleaned = cleaned.replacingOccurrences(of: "\\[\\[([^|\\]]+)\\|([^\\]]+)\\]\\]", with: "$2", options: .regularExpression)
+        cleaned = cleaned.replacingOccurrences(of: "\\[\\[([^\\]]+)\\]\\]", with: "$1", options: .regularExpression)
+        
+        // Remove external links [http://url Text] -> Text
+        cleaned = cleaned.replacingOccurrences(of: "\\[https?://[^\\s\\]]+ ([^\\]]+)\\]", with: "$1", options: .regularExpression)
+        cleaned = cleaned.replacingOccurrences(of: "\\[https?://[^\\s\\]]+\\]", with: "", options: .regularExpression)
+        
+        // Remove templates {{template}}
+        cleaned = cleaned.replacingOccurrences(of: "\\{\\{[^}]+\\}\\}", with: "", options: .regularExpression)
+        
+        // Remove HTML comments <!-- -->
+        cleaned = cleaned.replacingOccurrences(of: "<!--[^>]*-->", with: "", options: .regularExpression)
+        
+        // Remove ref tags <ref>...</ref>
+        cleaned = cleaned.replacingOccurrences(of: "<ref[^>]*>.*?</ref>", with: "", options: .regularExpression)
+        cleaned = cleaned.replacingOccurrences(of: "<ref[^>]*/>", with: "", options: .regularExpression)
+        
+        // Remove other HTML tags
+        cleaned = cleaned.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+        
+        // Clean up bold/italic
+        cleaned = cleaned.replacingOccurrences(of: "'''", with: "")
+        cleaned = cleaned.replacingOccurrences(of: "''", with: "")
+        
+        // Remove table formatting
+        cleaned = cleaned.replacingOccurrences(of: "\\|\\s*style\\s*=\\s*[^|\\n]+", with: "", options: .regularExpression)
+        cleaned = cleaned.replacingOccurrences(of: "\\|\\s*class\\s*=\\s*[^|\\n]+", with: "", options: .regularExpression)
+        
+        // Trim whitespace
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        return cleaned
     }
 
     // MARK: - String utilities
