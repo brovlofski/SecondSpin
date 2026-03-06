@@ -20,7 +20,7 @@ import Foundation
 
 // MARK: - Public result
 
-struct WikipediaAlbumResult {
+struct WikipediaAlbumResult: Codable {
     let pageTitle: String
     let wikidataID: String?
     let extract: String
@@ -141,7 +141,9 @@ class WikipediaService {
     private var cache: [String: WikipediaAlbumResult] = [:]
     private let cacheQueue = DispatchQueue(label: "wiki.cache", attributes: .concurrent)
 
-    private init() {}
+    private init() {
+        loadCache()
+    }
     
     /// Clear the Wikipedia cache. Call this from Settings or when needed.
     func clearCache() {
@@ -490,6 +492,28 @@ class WikipediaService {
     // MARK: - Cache
 
     private func store(_ result: WikipediaAlbumResult, key: String) {
-        cacheQueue.async(flags: .barrier) { [weak self] in self?.cache[key] = result }
+        cacheQueue.async(flags: .barrier) { [weak self] in
+            self?.cache[key] = result
+            self?.saveCache()
+        }
+    }
+    
+    private func loadCache() {
+        cacheQueue.async(flags: .barrier) { [weak self] in
+            let defaults = UserDefaults.standard
+            if let data = defaults.data(forKey: "WikipediaCache"),
+               let decoded = try? JSONDecoder().decode([String: WikipediaAlbumResult].self, from: data) {
+                self?.cache = decoded
+                print("Loaded \(decoded.count) Wikipedia entries from cache")
+            }
+        }
+    }
+    
+    private func saveCache() {
+        // Save to UserDefaults (called from within barrier already)
+        let defaults = UserDefaults.standard
+        if let encoded = try? JSONEncoder().encode(cache) {
+            defaults.set(encoded, forKey: "WikipediaCache")
+        }
     }
 }
