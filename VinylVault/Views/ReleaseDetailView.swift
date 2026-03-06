@@ -455,7 +455,42 @@ struct ReleaseDetailView: View {
         
         Task {
             do {
-                // Try to get rating and genres from MusicBrainz
+                // First check if we have a cached MBID
+                let cachedMBID = await MusicBrainzService.shared.getCachedMBID(
+                    artist: release.artist,
+                    album: release.title
+                )
+                
+                // If we have cached MBID, try to get cached data
+                if let mbid = cachedMBID,
+                   let cachedData = await MusicBrainzService.shared.getCachedData(mbid: mbid) {
+                    // Use cached rating and genres
+                    await MainActor.run {
+                        musicBrainzRating = cachedData.rating
+                        musicBrainzGenres = cachedData.genres
+                        musicBrainzMBID = mbid
+                        isLoadingMusicBrainz = false
+                    }
+                    
+                    // Try to get cached reviews
+                    if let cachedReviews = await CritiqueBrainzService.shared.getCachedReviews(mbid: mbid) {
+                        await MainActor.run {
+                            albumReviews = cachedReviews
+                            isLoadingReviews = false
+                        }
+                        return // All data loaded from cache, exit early
+                    } else {
+                        // Fetch reviews from API if not cached
+                        let reviews = try await CritiqueBrainzService.shared.fetchReviews(mbid: mbid, limit: 5)
+                        await MainActor.run {
+                            albumReviews = reviews
+                            isLoadingReviews = false
+                        }
+                        return
+                    }
+                }
+                
+                // No cache available, fetch from API
                 let result = try await MusicBrainzService.shared.getRatingAndGenres(
                     artist: release.artist,
                     album: release.title
