@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2ED357512F5AE45B00B83487 /* MusicBrainzModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357502F5AE45B00B83487 /* MusicBrainzModels.swift */; };
+		2ED357542F5AE49200B83487 /* MusicBrainzService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357532F5AE49200B83487 /* MusicBrainzService.swift */; };
+		2ED357552F5AE49200B83487 /* CritiqueBrainzService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357522F5AE49200B83487 /* CritiqueBrainzService.swift */; };
+		2ED357572F5AE4A700B83487 /* ReviewCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357562F5AE4A700B83487 /* ReviewCardView.swift */; };
 		AA0001 /* VinylVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0001 /* VinylVaultApp.swift */; };
 		AA0002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0002 /* ContentView.swift */; };
 		AA0003 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0003 /* HomeView.swift */; };
@@ -38,6 +42,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		2ED357502F5AE45B00B83487 /* MusicBrainzModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicBrainzModels.swift; sourceTree = "<group>"; };
+		2ED357522F5AE49200B83487 /* CritiqueBrainzService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CritiqueBrainzService.swift; sourceTree = "<group>"; };
+		2ED357532F5AE49200B83487 /* MusicBrainzService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicBrainzService.swift; sourceTree = "<group>"; };
+		2ED357562F5AE4A700B83487 /* ReviewCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewCardView.swift; sourceTree = "<group>"; };
 		AAAA01 /* SecondSpin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SecondSpin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB0001 /* VinylVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VinylVaultApp.swift; sourceTree = "<group>"; };
 		BB0002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -64,11 +72,11 @@
 		BB0023 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BB0024 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		BB0025 /* AlbumArtworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumArtworkService.swift; sourceTree = "<group>"; };
-		BB0031 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
 		BB0026 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		BB0028 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BB0029 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		BB0030 /* ImageGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGalleryView.swift; sourceTree = "<group>"; };
+		BB0031 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -124,6 +132,7 @@
 		DD0005 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				2ED357502F5AE45B00B83487 /* MusicBrainzModels.swift */,
 				BB0015 /* Release.swift */,
 				BB0016 /* Copy.swift */,
 				BB0017 /* RecordList.swift */,
@@ -134,6 +143,8 @@
 		DD0006 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				2ED357522F5AE49200B83487 /* CritiqueBrainzService.swift */,
+				2ED357532F5AE49200B83487 /* MusicBrainzService.swift */,
 				BB0018 /* DiscogsService.swift */,
 				BB0019 /* WikipediaService.swift */,
 				BB0020 /* StreamingLinkService.swift */,
@@ -146,6 +157,7 @@
 		DD0007 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				2ED357562F5AE4A700B83487 /* ReviewCardView.swift */,
 				BB0002 /* ContentView.swift */,
 				BB0003 /* HomeView.swift */,
 				BB0004 /* CollectionView.swift */,
@@ -257,6 +269,9 @@
 			files = (
 				AA0001 /* VinylVaultApp.swift in Sources */,
 				AA0002 /* ContentView.swift in Sources */,
+				2ED357572F5AE4A700B83487 /* ReviewCardView.swift in Sources */,
+				2ED357542F5AE49200B83487 /* MusicBrainzService.swift in Sources */,
+				2ED357552F5AE49200B83487 /* CritiqueBrainzService.swift in Sources */,
 				AA0003 /* HomeView.swift in Sources */,
 				AA0004 /* CollectionView.swift in Sources */,
 				AA0005 /* ListsView.swift in Sources */,
@@ -264,6 +279,7 @@
 				AA0007 /* AddRecordView.swift in Sources */,
 				AA0008 /* BarcodeScannerView.swift in Sources */,
 				AA0009 /* ManualSearchView.swift in Sources */,
+				2ED357512F5AE45B00B83487 /* MusicBrainzModels.swift in Sources */,
 				AA0010 /* SearchResultsView.swift in Sources */,
 				AA0011 /* AddCopyView.swift in Sources */,
 				AA0012 /* ReleaseDetailView.swift in Sources */,

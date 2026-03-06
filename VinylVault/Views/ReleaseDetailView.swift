@@ -24,6 +24,13 @@ struct ReleaseDetailView: View {
     @State private var galleryStartIndex = 0
     @State private var isVerifyingLinks = false
     @State private var showAddCopy = false
+    @State private var musicBrainzRating: MusicBrainzRating?
+    @State private var musicBrainzGenres: [MusicBrainzGenre] = []
+    @State private var albumReviews: [AlbumReview] = []
+    @State private var isLoadingMusicBrainz = false
+    @State private var isLoadingReviews = false
+    @State private var musicBrainzMBID: String?
+    @State private var expandedReviewId: String?
     
     var body: some View {
         ScrollView {
@@ -202,6 +209,94 @@ struct ReleaseDetailView: View {
 
                 Divider()
                 
+                // MusicBrainz Rating Section
+                if isLoadingMusicBrainz {
+                    HStack {
+                        ProgressView()
+                        Text("Loading rating...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                } else if let rating = musicBrainzRating, rating.votesCount > 0 {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Community Rating")
+                            .font(.headline)
+                        
+                        HStack(spacing: 8) {
+                            // Star rating display
+                            HStack(spacing: 4) {
+                                ForEach(0..<5) { index in
+                                    Image(systemName: index < Int((rating.value ?? 0).rounded()) ? "star.fill" : "star")
+                                        .foregroundColor(.yellow)
+                                        .font(.title3)
+                                }
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(rating.displayRating)
+                                    .font(.headline)
+                                Text("\(rating.votesCount) votes")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        // MusicBrainz genres (if different from Discogs)
+                        if !musicBrainzGenres.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(musicBrainzGenres.prefix(5)) { genre in
+                                        HStack(spacing: 4) {
+                                            Text(genre.name)
+                                            Text("(\(genre.count))")
+                                                .font(.caption2)
+                                        }
+                                        .font(.caption)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
+                                        .background(Color.blue.opacity(0.15))
+                                        .clipShape(Capsule())
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Divider()
+                }
+                
+                // Reviews Section
+                if isLoadingReviews {
+                    HStack {
+                        ProgressView()
+                        Text("Loading reviews...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                } else if !albumReviews.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Reviews (\(albumReviews.count))")
+                            .font(.headline)
+                        
+                        ForEach(albumReviews) { review in
+                            ReviewCardView(
+                                review: review,
+                                isExpanded: expandedReviewId == review.id
+                            ) {
+                                withAnimation {
+                                    expandedReviewId = expandedReviewId == review.id ? nil : review.id
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Divider()
+                }
+                
                 // Wikipedia Section
                 if isLoadingWikipedia {
                     ProgressView()
@@ -292,6 +387,7 @@ struct ReleaseDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             loadWikipediaDescription()
+            loadMusicBrainzData()
         }
         .task {
             guard !release.streamingLinksVerified else { return }
@@ -343,6 +439,48 @@ struct ReleaseDetailView: View {
                 wikipediaDescription = description
                 wikipediaURL = url
                 isLoadingWikipedia = false
+            }
+        }
+    }
+    
+    private func loadMusicBrainzData() {
+        isLoadingMusicBrainz = true
+        isLoadingReviews = true
+        
+        Task {
+            do {
+                // Try to get rating and genres from MusicBrainz
+                let result = try await MusicBrainzService.shared.getRatingAndGenres(
+                    artist: release.artist,
+                    album: release.title
+                )
+                
+                await MainActor.run {
+                    musicBrainzRating = result.rating
+                    musicBrainzGenres = result.genres
+                    musicBrainzMBID = result.mbid
+                    isLoadingMusicBrainz = false
+                }
+                
+                // If we got an MBID, fetch reviews
+                if let mbid = result.mbid {
+                    let reviews = try await CritiqueBrainzService.shared.fetchReviews(mbid: mbid, limit: 5)
+                    
+                    await MainActor.run {
+                        albumReviews = reviews
+                        isLoadingReviews = false
+                    }
+                } else {
+                    await MainActor.run {
+                        isLoadingReviews = false
+                    }
+                }
+            } catch {
+                print("Error loading MusicBrainz data: \(error)")
+                await MainActor.run {
+                    isLoadingMusicBrainz = false
+                    isLoadingReviews = false
+                }
             }
         }
     }
