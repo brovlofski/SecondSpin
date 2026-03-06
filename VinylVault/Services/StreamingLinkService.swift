@@ -132,7 +132,7 @@ class StreamingLinkService {
     // MARK: - Public: open helpers (use verified URL when available)
 
     func openSpotify(release: Release? = nil, artist: String, album: String) {
-        // Prefer verified deep link, then verified web URL, then search fallback
+        // Prefer verified deep link, then verified web URL
         if let stored = release?.spotifyAlbumURL {
             if let url = URL(string: "spotify:album:\(spotifyIDFromURL(stored) ?? "")"),
                !spotifyIDFromURL(stored).isNil,
@@ -143,13 +143,26 @@ class StreamingLinkService {
                 UIApplication.shared.open(url); return
             }
         }
-        // Fallback: album-specific search URL
-        // Using "album:" prefix narrows results to albums only
-        let q = "album:\(album) artist:\(artist)".addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
-        if let appURL = URL(string: "spotify:search:\(q)"), UIApplication.shared.canOpenURL(appURL) {
-            UIApplication.shared.open(appURL)
-        } else if let webURL = URL(string: "https://open.spotify.com/search/album%3A\(album.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")%20artist%3A\(artist.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") {
-            UIApplication.shared.open(webURL)
+        
+        // Fallback: Search Spotify API for exact album and open directly
+        Task {
+            if let directURL = await self.searchSpotifyAlbumDirect(artist: artist, album: album) {
+                await MainActor.run {
+                    if let url = URL(string: directURL) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            } else {
+                // Final fallback: album-filtered search
+                let q = "album:\(album) artist:\(artist)".addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
+                await MainActor.run {
+                    if let appURL = URL(string: "spotify:search:\(q)"), UIApplication.shared.canOpenURL(appURL) {
+                        UIApplication.shared.open(appURL)
+                    } else if let webURL = URL(string: "https://open.spotify.com/search/album%3A\(album.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")%20artist%3A\(artist.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")") {
+                        UIApplication.shared.open(webURL)
+                    }
+                }
+            }
         }
     }
 
@@ -177,6 +190,47 @@ class StreamingLinkService {
         }
     }
 
+    // MARK: - Helper: Quick Spotify album lookup
+    
+    private func searchSpotifyAlbumDirect(artist: String, album: String) async -> String? {
+        guard SpotifyConfig.isConfigured else { return nil }
+        guard let token = await fetchSpotifyToken() else { return nil }
+        
+        let query = "\(album) \(artist)"
+        guard let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://api.spotify.com/v1/search?q=\(encoded)&type=album&limit=3") else {
+            return nil
+        }
+        
+        var req = URLRequest(url: url)
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        guard let (data, _) = try? await URLSession.shared.data(for: req),
+              let resp = try? JSONDecoder().decode(SpotifySearchResponse.self, from: data),
+              let albums = resp.albums?.items else {
+            return nil
+        }
+        
+        // Find best matching album (simple fuzzy match on title and artist)
+        let normalizedAlbum = normalize(album)
+        let bestMatch = albums.first { spotifyAlbum in
+            let normalizedTitle = normalize(spotifyAlbum.name)
+            // Check if album titles overlap significantly
+            let titleMatch = normalizedTitle.contains(normalizedAlbum.prefix(min(5, normalizedAlbum.count))) ||
+                           normalizedAlbum.contains(normalizedTitle.prefix(min(5, normalizedTitle.count)))
+            // Check if any artist name matches
+            let normalizedArtist = normalize(artist)
+            let artistMatch = spotifyAlbum.artists.contains { 
+                let normalizedSpotifyArtist = normalize($0.name)
+                return normalizedSpotifyArtist.contains(normalizedArtist.prefix(min(5, normalizedArtist.count))) ||
+                       normalizedArtist.contains(normalizedSpotifyArtist.prefix(min(5, normalizedSpotifyArtist.count)))
+            }
+            return titleMatch && artistMatch
+        }
+        
+        return bestMatch?.webURL
+    }
+    
     // MARK: - Helper: Quick Apple Music album lookup
     
     private func searchAppleMusicAlbum(artist: String, album: String) async -> String? {
