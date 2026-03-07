@@ -259,13 +259,22 @@ struct WikipediaReviewParser {
         
         log("  Cleaning rating value: '\(cleaned)'")
         
-        // FIRST: Extract rating from {{rating|X|Y}} template BEFORE removing templates
+        // FIRST: Extract rating from {{rating|X|Y}} template BEFORE any other processing
         if let extractedRating = extractRatingTemplate(cleaned) {
-            log("  Extracted from template: '\(extractedRating)'")
-            cleaned = extractedRating
+            log("  Extracted from {{rating}} template: '\(extractedRating)'")
+            return extractedRating
         }
         
-        // Remove citations and references
+        // SECOND: Check for {{Album ratings}} star rating pattern like {{rating|3.5|5}}
+        // This handles nested rating templates within the Album ratings template
+        if cleaned.contains("{{") && cleaned.contains("rating") {
+            if let extractedRating = extractRatingTemplate(cleaned) {
+                log("  Extracted nested rating: '\(extractedRating)'")
+                return extractedRating
+            }
+        }
+        
+        // Remove citations and references FIRST (before other processing)
         cleaned = removeReferences(cleaned)
         
         // Remove wiki links (but keep the text for display)
@@ -275,12 +284,24 @@ struct WikipediaReviewParser {
         cleaned = cleaned.replacingOccurrences(of: "'''", with: "")
         cleaned = cleaned.replacingOccurrences(of: "''", with: "")
         
-        // Remove HTML tags
+        // IMPORTANT: Check if this is a star rating BEFORE removing HTML
+        // Star ratings often use Unicode characters or special symbols
+        if containsStarRating(cleaned) {
+            // Keep star symbols - just remove HTML tags and normalize
+            cleaned = removeHTMLTags(cleaned)
+            cleaned = normalizeWhitespace(cleaned)
+            log("  Preserved star rating: '\(cleaned)'")
+            return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        // For non-star ratings, continue with normal cleaning
         cleaned = removeHTMLTags(cleaned)
         
-        // Remove any remaining template markers or braces
-        cleaned = cleaned.replacingOccurrences(of: "{{", with: "")
-        cleaned = cleaned.replacingOccurrences(of: "}}", with: "")
+        // Only remove template markers if they're not part of a rating value
+        if !cleaned.contains("/") && !cleaned.matches(pattern: "[0-9]") {
+            cleaned = cleaned.replacingOccurrences(of: "{{", with: "")
+            cleaned = cleaned.replacingOccurrences(of: "}}", with: "")
+        }
         
         // Normalize whitespace
         cleaned = normalizeWhitespace(cleaned)
@@ -288,6 +309,17 @@ struct WikipediaReviewParser {
         log("  Final cleaned rating: '\(cleaned)'")
         
         return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    /// Checks if text contains star rating symbols
+    private static func containsStarRating(_ text: String) -> Bool {
+        // Check for various star symbols and rating indicators
+        let starPatterns = [
+            "★", "☆", "⭐", "✭", "✯",  // Star symbols
+            "♪", "♫", "♬",              // Music note symbols sometimes used
+            "◼︎", "■",                  // Black squares sometimes used
+        ]
+        return starPatterns.contains { text.contains($0) }
     }
     
     /// Extracts numeric rating from {{rating|X|Y}} or {{Rating|X|Y}} template
@@ -413,5 +445,17 @@ struct WikipediaReviewParser {
                lower.contains("score") ||
                lower == "!" ||
                lower.isEmpty
+    }
+}
+
+// MARK: - String Extension for Pattern Matching
+
+private extension String {
+    func matches(pattern: String) -> Bool {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            return false
+        }
+        let range = NSRange(location: 0, length: self.utf16.count)
+        return regex.firstMatch(in: self, options: [], range: range) != nil
     }
 }
