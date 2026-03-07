@@ -25,6 +25,7 @@ struct ReleaseDetailView: View {
     @State private var galleryStartIndex = 0
     @State private var isVerifyingLinks = false
     @State private var showAddCopy = false
+    @State private var showAddToListSheet = false
     @State private var musicBrainzRating: MusicBrainzRating?
     @State private var musicBrainzGenres: [MusicBrainzGenre] = []
     @State private var albumReviews: [AlbumReview] = []
@@ -436,17 +437,30 @@ struct ReleaseDetailView: View {
                     Divider()
                 }
                 
-                // Delete Button
-                Button(role: .destructive, action: {
-                    showDeleteConfirmation = true
-                }) {
-                    Label("Remove from Collection", systemImage: "trash")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.red.opacity(0.1))
-                        .foregroundColor(.red)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                // Actions: Remove and Add to List
+                HStack(spacing: 12) {
+                    Button(role: .destructive, action: {
+                        showDeleteConfirmation = true
+                    }) {
+                        Label("Remove", systemImage: "trash")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.red.opacity(0.1))
+                            .foregroundColor(.red)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    Button(action: {
+                        showAddToListSheet = true
+                    }) {
+                        Label("Add to List", systemImage: "list.bullet")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.accentColor.opacity(0.12))
+                            .foregroundColor(.accentColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
                 }
             }
             .padding()
@@ -475,6 +489,9 @@ struct ReleaseDetailView: View {
         }
         .sheet(isPresented: $showAddCopy) {
             AddCopyView(release: release)
+        }
+        .sheet(isPresented: $showAddToListSheet) {
+            AddToListSheet(release: release)
         }
         .fullScreenCover(isPresented: $showGallery) {
             ImageGalleryView(
@@ -617,6 +634,89 @@ struct CopyRowView: View {
         .padding()
         .background(Color(.systemGray6))
         .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+struct AddToListSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Bindable var release: Release
+    @Query(sort: \RecordList.orderIndex) private var lists: [RecordList]
+    
+    @State private var showConfirmation = false
+    @State private var addedListName = ""
+    
+    var body: some View {
+        NavigationStack {
+            Group {
+                if lists.isEmpty {
+                    ContentUnavailableView(
+                        "No Lists",
+                        systemImage: "list.bullet",
+                        description: Text("Create a list in the Lists tab to organize your albums.")
+                    )
+                } else {
+                    List {
+                        ForEach(lists) { list in
+                            let alreadyInList = list.releases.contains { $0.discogsId == release.discogsId }
+                            Button {
+                                guard !alreadyInList else { return }
+                                list.releases.append(release)
+                                // Persist update
+                                try? modelContext.save()
+                                
+                                addedListName = list.name
+                                withAnimation { showConfirmation = true }
+                                
+                                // Auto-dismiss shortly after confirmation
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                                    dismiss()
+                                }
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(list.name)
+                                        if !list.releases.isEmpty {
+                                            Text("\(list.releases.count) \(list.releases.count == 1 ? "album" : "albums")")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    Spacer()
+                                    if alreadyInList {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                    }
+                                }
+                            }
+                            .disabled(alreadyInList)
+                        }
+                    }
+                    .listStyle(.insetGrouped)
+                }
+            }
+            .navigationTitle("Add to List")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if showConfirmation {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
+                        Text("Added to \(addedListName)")
+                    }
+                    .font(.subheadline)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.thinMaterial)
+                    .clipShape(Capsule())
+                    .padding(.bottom, 20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+        }
     }
 }
 
