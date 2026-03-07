@@ -17,6 +17,7 @@
 		AA0003 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0003 /* HomeView.swift */; };
 		AA0004 /* CollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0004 /* CollectionView.swift */; };
 		AA0099 /* TagAlbumsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0099 /* TagAlbumsView.swift */; };
+		AA0100 /* GenreBrowserSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0100 /* GenreBrowserSheet.swift */; };
 		AA0005 /* ListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0005 /* ListsView.swift */; };
 		AA0006 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0006 /* SearchView.swift */; };
 		AA0007 /* AddRecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0007 /* AddRecordView.swift */; };
@@ -56,6 +57,7 @@
 		BB0003 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		BB0004 /* CollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionView.swift; sourceTree = "<group>"; };
 		BB0099 /* TagAlbumsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagAlbumsView.swift; sourceTree = "<group>"; };
+		BB0100 /* GenreBrowserSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenreBrowserSheet.swift; sourceTree = "<group>"; };
 		BB0005 /* ListsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListsView.swift; sourceTree = "<group>"; };
 		BB0006 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		BB0007 /* AddRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRecordView.swift; sourceTree = "<group>"; };
@@ -169,6 +171,7 @@
 				BB0003 /* HomeView.swift */,
 				BB0004 /* CollectionView.swift */,
 				BB0099 /* TagAlbumsView.swift */,
+				BB0100 /* GenreBrowserSheet.swift */,
 				BB0005 /* ListsView.swift */,
 				BB0006 /* SearchView.swift */,
 				BB0007 /* AddRecordView.swift */,
@@ -292,6 +295,7 @@
 				AA0003 /* HomeView.swift in Sources */,
 				AA0004 /* CollectionView.swift in Sources */,
 				AA0099 /* TagAlbumsView.swift in Sources */,
+				AA0100 /* GenreBrowserSheet.swift in Sources */,
 				AA0005 /* ListsView.swift in Sources */,
 				AA0006 /* SearchView.swift in Sources */,
 				AA0007 /* AddRecordView.swift in Sources */,

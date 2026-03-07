@@ -34,6 +34,7 @@ struct CollectionView: View {
     // Cached filtered and sorted results
     @State private var filteredAndSortedReleases: [Release] = []
     @State private var allGenres: [String] = []
+    @State private var showGenreBrowser = false
     
     var body: some View {
         NavigationStack {
@@ -61,6 +62,14 @@ struct CollectionView: View {
             .navigationTitle("My Collection")
             .searchable(text: $searchText, prompt: "Search collection")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        showGenreBrowser = true
+                    } label: {
+                        Image(systemName: "tag.circle")
+                    }
+                    .disabled(releases.isEmpty)
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Picker("Sort By", selection: $sortOption) {
@@ -105,13 +114,17 @@ struct CollectionView: View {
             .onChange(of: selectedGenre) { _, _ in
                 updateFilteredReleases()
             }
+            .sheet(isPresented: $showGenreBrowser) {
+                GenreBrowserSheet(allTags: allGenres)
+            }
         }
     }
     
     // MARK: - Helper Methods
     
     private func updateGenres() {
-        allGenres = Array(Set(releases.flatMap { $0.genres })).sorted()
+        // Collect both genres and styles so the browser shows every tag
+        allGenres = Array(Set(releases.flatMap { $0.genres + $0.styles })).sorted()
     }
     
     /// Update the displayed list, optionally re-shuffling when sort is Random.
