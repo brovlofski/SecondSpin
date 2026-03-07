@@ -91,38 +91,57 @@ struct WikipediaReviewParser {
         
         var scores: [AlbumReviewScore] = []
         
-        // Match pattern: |rev1 = Source |rev1score = Rating
-        let pattern = "\\|\\s*rev(\\d+)\\s*=\\s*([^|\\n]+?)\\s*\\|\\s*rev\\1[Ss]core\\s*=\\s*([^|\\n}]+)"
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
-            return nil
-        }
+        // Enhanced pattern to handle multiline and various formats
+        // Pattern 1: Standard |revN = Source |revNscore = Rating (case-insensitive)
+        let pattern1 = "\\|\\s*rev(\\d+)\\s*=\\s*([^|\\n]+?)\\s*\\|\\s*rev\\1[Ss]core\\s*=\\s*([^|\\n}]+)"
         
-        let matches = regex.matches(in: text, range: NSRange(text.startIndex..., in: text))
-        log("Found \(matches.count) rev/revScore pairs")
+        // Pattern 2: Handle cases where source/rating span multiple lines
+        let pattern2 = "\\|\\s*rev(\\d+)\\s*=\\s*([^|]+?)\\s*\\|\\s*rev\\1[Ss]core\\s*=\\s*([^|]+?)(?=\\||\\}\\})"
         
-        for match in matches {
-            if match.numberOfRanges >= 4,
-               let sourceRange = Range(match.range(at: 2), in: text),
-               let ratingRange = Range(match.range(at: 3), in: text) {
-                
-                let rawSource = String(text[sourceRange])
-                let rawRating = String(text[ratingRange])
-                
-                log("RAW pair - Source: '\(rawSource)' | Rating: '\(rawRating)'")
-                
-                // Clean source and rating separately
-                let cleanedSource = cleanPublicationName(rawSource)
-                let cleanedRating = cleanRatingValue(rawRating)
-                
-                log("CLEANED pair - Source: '\(cleanedSource)' | Rating: '\(cleanedRating)'")
-                
-                // Only add if both are non-empty after cleaning
-                if !cleanedSource.isEmpty && !cleanedRating.isEmpty {
-                    scores.append(AlbumReviewScore(source: cleanedSource, rating: cleanedRating))
-                    log("✓ Added: \(cleanedSource) — \(cleanedRating)")
-                } else {
-                    log("✗ Rejected (empty after cleaning)")
+        for pattern in [pattern1, pattern2] {
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]) else {
+                continue
+            }
+            
+            let matches = regex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+            log("Pattern found \(matches.count) rev/revScore pairs")
+            
+            for match in matches {
+                if match.numberOfRanges >= 4,
+                   let revNumber = Range(match.range(at: 1), in: text),
+                   let sourceRange = Range(match.range(at: 2), in: text),
+                   let ratingRange = Range(match.range(at: 3), in: text) {
+                    
+                    let revNum = String(text[revNumber])
+                    let rawSource = String(text[sourceRange])
+                    let rawRating = String(text[ratingRange])
+                    
+                    log("RAW pair (rev\(revNum)) - Source: '\(rawSource)' | Rating: '\(rawRating)'")
+                    
+                    // Clean source and rating separately
+                    let cleanedSource = cleanPublicationName(rawSource)
+                    let cleanedRating = cleanRatingValue(rawRating)
+                    
+                    log("CLEANED pair (rev\(revNum)) - Source: '\(cleanedSource)' | Rating: '\(cleanedRating)'")
+                    
+                    // Only add if both are non-empty after cleaning and not already added
+                    if !cleanedSource.isEmpty && !cleanedRating.isEmpty {
+                        // Check for duplicates
+                        if !scores.contains(where: { $0.source == cleanedSource && $0.rating == cleanedRating }) {
+                            scores.append(AlbumReviewScore(source: cleanedSource, rating: cleanedRating))
+                            log("✓ Added: \(cleanedSource) — \(cleanedRating)")
+                        } else {
+                            log("✗ Skipped (duplicate)")
+                        }
+                    } else {
+                        log("✗ Rejected (empty after cleaning)")
+                    }
                 }
+            }
+            
+            // If we found scores with the first pattern, don't try the second
+            if !scores.isEmpty {
+                break
             }
         }
         

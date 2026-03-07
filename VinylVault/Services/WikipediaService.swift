@@ -200,6 +200,10 @@ class WikipediaService {
     func clearCache() {
         cacheQueue.async(flags: .barrier) { [weak self] in
             self?.cache.removeAll()
+            // Persist the cleared cache to UserDefaults
+            UserDefaults.standard.removeObject(forKey: "WikipediaCache")
+            UserDefaults.standard.synchronize()
+            print("Wikipedia cache cleared and persisted")
         }
     }
 
@@ -249,12 +253,49 @@ class WikipediaService {
     // MARK: - Phase 1: Predicted title generation
 
     /// Returns candidate page titles in priority order.
+    /// Handles special characters like & by generating multiple variations
     private func predictedTitles(albumTitle: String, artist: String) -> [String] {
-        [
-            "\(albumTitle) (\(artist) album)",   // "Music (Madonna album)"
-            "\(albumTitle) (album)",              // "Rumours (album)"
-            albumTitle,                           // "Nevermind"
-        ]
+        var titles: [String] = []
+        
+        // Generate variations for titles with special characters
+        let titleVariations = generateTitleVariations(albumTitle)
+        
+        for title in titleVariations {
+            titles.append("\(title) (\(artist) album)")   // "Music (Madonna album)"
+            titles.append("\(title) (album)")              // "Rumours (album)"
+            titles.append(title)                           // "Nevermind"
+        }
+        
+        // Remove duplicates while preserving order
+        var seen = Set<String>()
+        return titles.filter { seen.insert($0.lowercased()).inserted }
+    }
+    
+    /// Generates title variations to handle special characters
+    /// Example: "Milk & Kisses" -> ["Milk & Kisses", "Milk and Kisses"]
+    private func generateTitleVariations(_ title: String) -> [String] {
+        var variations: [String] = [title]
+        
+        // Handle ampersand variations
+        if title.contains("&") {
+            // & -> and
+            variations.append(title.replacingOccurrences(of: "&", with: "and"))
+            // & -> %26 (URL encoded, though URLComponents should handle this)
+            variations.append(title.replacingOccurrences(of: "&", with: "%26"))
+        }
+        
+        if title.contains(" and ") {
+            // and -> &
+            variations.append(title.replacingOccurrences(of: " and ", with: " & "))
+        }
+        
+        // Handle other common variations
+        if title.contains("'") {
+            // Remove apostrophes
+            variations.append(title.replacingOccurrences(of: "'", with: ""))
+        }
+        
+        return variations
     }
 
     // MARK: - Phase 1: Page existence check
