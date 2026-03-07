@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class Release {
+final class Release: @unchecked Sendable {
     @Attribute(.unique) var discogsId: Int
     var title: String
     var artist: String
@@ -32,6 +32,8 @@ final class Release {
     var spotifyAlbumURL: String?
     /// Verified direct Apple Music album URL (nil = not yet resolved)
     var appleMusicAlbumURL: String?
+    /// Verified direct NetEase Cloud Music album URL (nil = not yet resolved)
+    var neteaseCloudMusicAlbumURL: String?
     /// True once the streaming links have been searched and cached
     var streamingLinksVerified: Bool
 
@@ -79,6 +81,7 @@ final class Release {
         self.tracklist = tracklist
         self.spotifyAlbumURL = nil
         self.appleMusicAlbumURL = nil
+        self.neteaseCloudMusicAlbumURL = nil
         self.streamingLinksVerified = false
         self.copies = []
         self.lists = []

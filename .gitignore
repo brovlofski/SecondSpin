@@ -1,0 +1,66 @@
+# Xcode
+.DS_Store
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+**/xcuserdata/
+**/*.xcuserdatad/
+**/UserInterfaceState.xcuserstate
+*.xccheckout
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Carthage
+Carthage/
+Cartfile.resolved
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Backup files
+*.backup
+*.orig
+*.swp
+*~
+
+# Temporary files
+*.tmp
+
+# Build products
+build/
+*.xcarchive
+
+# Project files
+**/*.xcodeproj/project.xcworkspace/xcuserdata/
+**/*.xcodeproj/xcuserdata/
+
+# Git metadata
+.git/
+
+# Local configuration files
+*.local.xcconfig
+
+# Documentation
+docs/
+*.docset
+
+# Custom exclusions for this project
+SecondSpin.xcodeproj/project.xcworkspace/xcuserdata/
+SecondSpin.xcodeproj/xcuserdata/
+VinylVault.xcodeproj/project.xcworkspace/xcuserdata/
+VinylVault/Resources/Assets.xcassets/*.imageset/*.backup

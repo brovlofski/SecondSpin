@@ -97,7 +97,7 @@ struct HomeView: View {
             Image("SecondSpinIcon")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 60, height: 60)
+                .frame(width: 48, height: 48) // 80% of original 60
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
             
@@ -147,8 +147,8 @@ struct HomeView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
                 
-                // Album Info
-                VStack(alignment: .leading, spacing: 8) {
+                // Album Info (simplified - only title and artist)
+                VStack(alignment: .leading, spacing: 4) {
                     Text(album.title)
                         .font(.title3)
                         .fontWeight(.semibold)
@@ -156,26 +156,60 @@ struct HomeView: View {
                     Text(album.artist)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                    
-                    HStack(spacing: 4) {
-                        if album.year > 0 {
-                            Text(String(album.year))
-                            Text("·")
-                        }
-                        Text(album.fullFormatDisplay)
-                        if let country = album.country {
-                            Text("·")
-                            Text(country)
-                        }
-                        if let genre = album.genres.first {
-                            Text("·")
-                            Text(genre)
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                
+                // Listen Now Section with Streaming Buttons (no text, no background, aligned left)
+                VStack(alignment: .leading, spacing: 12) {
+                    Divider()
+                    
+                    Text("Listen Now")
+                        .font(.headline)
+                    
+                    HStack(spacing: 24) {
+                        Button {
+                            StreamingLinkService.shared.openSpotify(
+                                release: album,
+                                artist: album.artist,
+                                album: album.title
+                            )
+                        } label: {
+                            Image("SpotifyIcon")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Button {
+                            StreamingLinkService.shared.openAppleMusic(
+                                release: album,
+                                artist: album.artist,
+                                album: album.title
+                            )
+                        } label: {
+                            Image("AppleMusicIcon")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Button {
+                            StreamingLinkService.shared.openNetEaseCloudMusic(
+                                release: album,
+                                artist: album.artist,
+                                album: album.title
+                            )
+                        } label: {
+                            Image("NetEaseMusicIcon")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
                 
                 // Wikipedia Description
                 if isLoadingWikipedia {

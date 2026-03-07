@@ -234,6 +234,9 @@ struct WikipediaReviewParser {
     static func cleanPublicationName(_ text: String) -> String {
         var cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         
+        // Remove citation templates FIRST (e.g., {{cite magazine}}, {{cite web}})
+        cleaned = removeCitationTemplates(cleaned)
+        
         // Remove citations and references
         cleaned = removeReferences(cleaned)
         
@@ -267,14 +270,18 @@ struct WikipediaReviewParser {
         
         // SECOND: Check for {{Album ratings}} star rating pattern like {{rating|3.5|5}}
         // This handles nested rating templates within the Album ratings template
-        if cleaned.contains("{{") && cleaned.contains("rating") {
+        // Use case-insensitive check for "rating"
+        if cleaned.contains("{{") && (cleaned.lowercased().contains("rating") || cleaned.contains("Rating")) {
             if let extractedRating = extractRatingTemplate(cleaned) {
                 log("  Extracted nested rating: '\(extractedRating)'")
                 return extractedRating
             }
         }
         
-        // Remove citations and references FIRST (before other processing)
+        // Remove citation templates FIRST (e.g., {{cite magazine}}, {{cite web}})
+        cleaned = removeCitationTemplates(cleaned)
+        
+        // Remove citations and references
         cleaned = removeReferences(cleaned)
         
         // Remove wiki links (but keep the text for display)
@@ -298,7 +305,9 @@ struct WikipediaReviewParser {
         cleaned = removeHTMLTags(cleaned)
         
         // Only remove template markers if they're not part of a rating value
-        if !cleaned.contains("/") && !cleaned.matches(pattern: "[0-9]") {
+        // Check if it looks like a rating (contains numbers, slashes, decimals, etc.)
+        let looksLikeRating = cleaned.contains("/") || cleaned.matches(pattern: "[0-9]") || cleaned.contains(".") || cleaned.contains("%")
+        if !looksLikeRating {
             cleaned = cleaned.replacingOccurrences(of: "{{", with: "")
             cleaned = cleaned.replacingOccurrences(of: "}}", with: "")
         }
@@ -306,37 +315,202 @@ struct WikipediaReviewParser {
         // Normalize whitespace
         cleaned = normalizeWhitespace(cleaned)
         
+        // Final trim
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        
         log("  Final cleaned rating: '\(cleaned)'")
         
-        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Reject common placeholder texts that are not actual ratings
+        if isPlaceholderRating(cleaned) {
+            log("  Rejected as placeholder: '\(cleaned)'")
+            return ""
+        }
+        
+        return cleaned
     }
     
-    /// Checks if text contains star rating symbols
+    /// Checks if text contains star rating symbols or patterns
     private static func containsStarRating(_ text: String) -> Bool {
         // Check for various star symbols and rating indicators
         let starPatterns = [
-            "★", "☆", "⭐", "✭", "✯",  // Star symbols
-            "♪", "♫", "♬",              // Music note symbols sometimes used
-            "◼︎", "■",                  // Black squares sometimes used
+            "★", "☆", "⭐", "✭", "✯", "✶", "✷", "✹",  // Star symbols
+            "♪", "♫", "♬",                            // Music note symbols sometimes used
+            "◼︎", "■", "▪", "●", "◆", "◈",            // Black squares and shapes sometimes used
         ]
+        
+        // Also check for patterns like "****" (asterisk stars) or "●●●●" (circle stars)
+        if text.contains("*") && text.filter({ $0 == "*" }).count >= 2 {
+            return true  // Likely star rating like "***" or "****"
+        }
+        
+        if text.contains("●") && text.filter({ $0 == "●" }).count >= 2 {
+            return true  // Likely star rating like "●●●●"
+        }
+        
+        if text.contains("·") && text.filter({ $0 == "·" }).count >= 2 {
+            return true  // Likely rating with dots
+        }
+        
+        // Check for any star pattern character
         return starPatterns.contains { text.contains($0) }
     }
     
-    /// Extracts numeric rating from {{rating|X|Y}} or {{Rating|X|Y}} template
+    /// Extracts numeric rating from various rating templates: {{rating|X|Y}}, {{score|X|Y}}, {{star|X|Y}}, etc.
     private static func extractRatingTemplate(_ text: String) -> String? {
-        let pattern = "\\{\\{[Rr]ating\\|(\\d+(?:\\.\\d+)?)\\|(\\d+)\\}\\}"
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: []),
-              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-              match.numberOfRanges >= 3,
-              let valueRange = Range(match.range(at: 1), in: text),
-              let maxRange = Range(match.range(at: 2), in: text) else {
-            return nil
+        // Try multiple rating template patterns
+        let patterns = [
+            "\\{\\{[Rr]ating\\|(\\d+(?:\\.\\d+)?)\\|(\\d+)(?:\\|[^}]*)?\\}\\}",  // {{rating|4|5}} or {{rating|4|5|text=yes}}
+            "\\{\\{[Ss]core\\|(\\d+(?:\\.\\d+)?)\\|(\\d+)(?:\\|[^}]*)?\\}\\}",   // {{score|4|5}}
+            "\\{\\{[Ss]tar\\|(\\d+(?:\\.\\d+)?)\\|(\\d+)(?:\\|[^}]*)?\\}\\}",    // {{star|4|5}}
+            "\\{\\{[Rr]ating\\|(\\d+(?:\\.\\d+)?)\\|(\\d+)\\s*\\|\\s*[Ss]tar\\}\\}",  // {{rating|4|5|star}}
+            "\\{\\{[Rr]ating\\|(\\d+(?:\\.\\d+)?)\\|(\\d+)\\s*\\|\\s*[Ss]tars?\\}\\}" // {{rating|4|5|stars}}
+        ]
+        
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: []),
+                  let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                  match.numberOfRanges >= 3,
+                  let valueRange = Range(match.range(at: 1), in: text),
+                  let maxRange = Range(match.range(at: 2), in: text) else {
+                continue
+            }
+            
+            let value = String(text[valueRange])
+            let max = String(text[maxRange])
+            
+            log("  Extracted from rating template: '\(value)/\(max)' using pattern: \(pattern)")
+            return "\(value)/\(max)"
         }
         
-        let value = String(text[valueRange])
-        let max = String(text[maxRange])
+        return nil
+    }
+    
+    /// Removes citation templates like {{cite magazine}}, {{cite web}}, {{sfn}}, etc.
+    /// Handles both complete templates {{cite magazine|...}} and partial/truncated ones {{cite magazine
+    private static func removeCitationTemplates(_ text: String) -> String {
+        var result = text
+        let original = text
         
-        return "\(value)/\(max)"
+        // Log the input for debugging
+        log("  removeCitationTemplates input: '\(original)'")
+        
+        // 1. Handle letter ratings with attached citations: "C{{cite magazine}}", "Ccite magazine"
+        // Pattern matches a letter (A-Z, a-z, plus/minus) followed by optional {{ and "cite" plus citation
+        let letterRatingPatterns = [
+            "([A-Za-z±+−-])\\{\\{cite[^}]*\\}\\}",      // C{{cite magazine|...}}
+            "([A-Za-z±+−-])\\{\\{citation[^}]*\\}\\}",  // C{{citation|...}}
+            "([A-Za-z±+−-])[Cc]ite\\s+[A-Za-z]+",       // Ccite magazine (no braces)
+        ]
+        
+        for pattern in letterRatingPatterns {
+            let before = result
+            result = result.replacingOccurrences(
+                of: pattern,
+                with: "$1",
+                options: [.regularExpression, .caseInsensitive]
+            )
+            if before != result {
+                log("  Applied letter rating pattern '\(pattern)': '\(before)' -> '\(result)'")
+            }
+        }
+        
+        // 2. Handle numeric/decimal ratings with attached citations: "9/10{{cite web}}", "7.6/10{{cite magazine}}"
+        let numericRatingPatterns = [
+            "([0-9./]+)\\{\\{cite[^}]*\\}\\}",          // 9/10{{cite web|...}}
+            "([0-9./]+)\\{\\{citation[^}]*\\}\\}",      // 9/10{{citation|...}}
+            "([0-9./]+)\\{\\{sfn[^}]*\\}\\}",           // 9/10{{sfn|...}}
+            "([0-9./]+)\\{\\{harvnb[^}]*\\}\\}",        // 9/10{{harvnb|...}}
+            "([0-9./]+)\\{\\{harv[^}]*\\}\\}",          // 9/10{{harv|...}}
+        ]
+        
+        for pattern in numericRatingPatterns {
+            let before = result
+            result = result.replacingOccurrences(
+                of: pattern,
+                with: "$1",
+                options: [.regularExpression, .caseInsensitive]
+            )
+            if before != result {
+                log("  Applied numeric rating pattern '\(pattern)': '\(before)' -> '\(result)'")
+            }
+        }
+        
+        // 3. Handle partial/truncated citation templates (missing closing braces)
+        let partialPatterns = [
+            "([0-9./A-Za-z±+−-]?)\\{\\{cite[^}]*$",      // ...{{cite magazine (no closing)
+            "([0-9./A-Za-z±+−-]?)\\{\\{citation[^}]*$",
+            "([0-9./A-Za-z±+−-]?)\\{\\{sfn[^}]*$",
+            "([0-9./A-Za-z±+−-]?)\\{\\{harvnb[^}]*$",
+            "([0-9./A-Za-z±+−-]?)\\{\\{harv[^}]*$",
+        ]
+        
+        for pattern in partialPatterns {
+            let before = result
+            result = result.replacingOccurrences(
+                of: pattern,
+                with: "$1",
+                options: [.regularExpression, .caseInsensitive]
+            )
+            if before != result {
+                log("  Applied partial pattern '\(pattern)': '\(before)' -> '\(result)'")
+            }
+        }
+        
+        // 4. Remove complete citation templates (without preserving preceding text)
+        let completeTemplatePatterns = [
+            "\\{\\{cite[^}]*\\}\\}",
+            "\\{\\{citation[^}]*\\}\\}",
+            "\\{\\{sfn[^}]*\\}\\}",
+            "\\{\\{harvnb[^}]*\\}\\}",
+            "\\{\\{harv[^}]*\\}\\}",
+            "\\{\\{cite book[^}]*\\}\\}",
+            "\\{\\{cite web[^}]*\\}\\}",
+            "\\{\\{cite news[^}]*\\}\\}",
+            "\\{\\{cite journal[^}]*\\}\\}",
+            "\\{\\{cite magazine[^}]*\\}\\}",
+            "\\{\\{cite interview[^}]*\\}\\}",
+            "\\{\\{cite press release[^}]*\\}\\}",
+            "\\{\\{cite episode[^}]*\\}\\}",
+            "\\{\\{cite av media[^}]*\\}\\}",
+            "\\{\\{cite AV media[^}]*\\}\\}",
+            "\\{\\{cite album-notes[^}]*\\}\\}",
+            "\\{\\{cite album notes[^}]*\\}\\}",
+        ]
+        
+        for pattern in completeTemplatePatterns {
+            let before = result
+            result = result.replacingOccurrences(
+                of: pattern,
+                with: "",
+                options: [.regularExpression, .caseInsensitive]
+            )
+            if before != result {
+                log("  Applied complete template pattern '\(pattern)': removed citation")
+            }
+        }
+        
+        // 5. Remove any standalone "cite" references (without {{ }})
+        result = result.replacingOccurrences(
+            of: "\\s*[Cc]ite\\s+[A-Za-z]+\\s*",
+            with: "",
+            options: .regularExpression
+        )
+        
+        // 6. Remove any remaining curly braces
+        result = result.replacingOccurrences(of: "{{", with: "")
+        result = result.replacingOccurrences(of: "}}", with: "")
+        result = result.replacingOccurrences(of: "{", with: "")
+        result = result.replacingOccurrences(of: "}", with: "")
+        
+        // 7. Clean up any double spaces or trailing punctuation
+        result = result.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        result = result.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if original != result {
+            log("  removeCitationTemplates result: '\(original)' -> '\(result)'")
+        }
+        
+        return result
     }
     
     // MARK: - Markup Removal Helpers
@@ -445,6 +619,34 @@ struct WikipediaReviewParser {
                lower.contains("score") ||
                lower == "!" ||
                lower.isEmpty
+    }
+    
+    /// Checks if text is a placeholder rating (e.g., "Rating", "Score", "N/A", etc.)
+    private static func isPlaceholderRating(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let placeholders = [
+            "rating", "score", "n/a", "na", "none", "tbd", "–", "—", "-", "—",
+            "unknown", "not rated", "unrated", "not available", "pending",
+            "to be announced", "tba", "?", "??", "???", "nil", "null"
+        ]
+        
+        // Check for empty or very short meaningless strings
+        if text.isEmpty || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return true
+        }
+        
+        // Check against placeholders
+        if placeholders.contains(lower) {
+            return true
+        }
+        
+        // Check for strings that are just punctuation or symbols
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.count <= 2 && trimmed.allSatisfy({ !$0.isLetter && !$0.isNumber }) {
+            return true
+        }
+        
+        return false
     }
 }
 

@@ -121,11 +121,13 @@ class StreamingLinkService {
 
         async let appleTask  = bestAppleMusicURL(for: release)
         async let spotifyTask = bestSpotifyURL(for: release)
+        async let neteaseTask = bestNetEaseCloudMusicURL(for: release)
 
-        let (appleURL, spotifyURL) = await (appleTask, spotifyTask)
+        let (appleURL, spotifyURL, neteaseURL) = await (appleTask, spotifyTask, neteaseTask)
 
         release.appleMusicAlbumURL  = appleURL  ?? release.appleMusicAlbumURL
         release.spotifyAlbumURL     = spotifyURL ?? release.spotifyAlbumURL
+        release.neteaseCloudMusicAlbumURL = neteaseURL ?? release.neteaseCloudMusicAlbumURL
         release.streamingLinksVerified = true
     }
 
@@ -183,6 +185,32 @@ class StreamingLinkService {
                 let q = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
                 await MainActor.run {
                     if let url = URL(string: "https://music.apple.com/search?term=\(q)") {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            }
+        }
+    }
+    
+    func openNetEaseCloudMusic(release: Release? = nil, artist: String, album: String) {
+        // Try to use cached URL if available
+        if let stored = release?.neteaseCloudMusicAlbumURL, let url = URL(string: stored) {
+            UIApplication.shared.open(url); return
+        }
+        
+        // Fallback: Try to search for the album on NetEase Cloud Music
+        Task {
+            if let directURL = await self.searchNetEaseCloudMusicAlbum(artist: artist, album: album) {
+                await MainActor.run {
+                    if let url = URL(string: directURL) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            } else {
+                // Final fallback: generic search on NetEase Cloud Music website
+                let q = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                await MainActor.run {
+                    if let url = URL(string: "https://music.163.com/#/search/m/?s=\(q)&type=10") {
                         UIApplication.shared.open(url)
                     }
                 }
@@ -267,6 +295,42 @@ class StreamingLinkService {
     }
     func generateSpotifyLink(artist: String, album: String) -> URL? { spotifyWebURL(artist: artist, album: album) }
     func generateAppleMusicLink(artist: String, album: String) -> URL? { appleMusicURL(artist: artist, album: album) }
+
+    // MARK: - NetEase Cloud Music Search
+    
+    private func bestNetEaseCloudMusicURL(for release: Release) async -> String? {
+        // NetEase Cloud Music doesn't have a public API like Spotify/Apple Music,
+        // so we'll use web scraping to find the album.
+        let query = "\(release.title) \(release.artist)"
+        
+        // First try to search via web scraping
+        if let url = await searchNetEaseCloudMusicAlbum(artist: release.artist, album: release.title) {
+            return url
+        }
+        
+        // If that fails, return a search URL as fallback
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        return "https://music.163.com/#/search/m/?s=\(encodedQuery)&type=10"
+    }
+    
+    private func searchNetEaseCloudMusicAlbum(artist: String, album: String) async -> String? {
+        // NetEase Cloud Music web search approach
+        // We'll try to construct a direct album URL based on common patterns
+        let query = "\(album) \(artist)"
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        
+        // Try multiple approaches:
+        // 1. Direct web search to find album ID
+        // 2. Common URL patterns
+        
+        // Approach 1: Try to fetch search results page and parse for album link
+        // Note: NetEase Cloud Music is a single-page app, so parsing HTML is complex
+        // For now, we return nil and let the caller use the search URL fallback
+        _ = "https://music.163.com/#/search/m/?s=\(encodedQuery)&type=10"
+        
+        // In a production app, you might use a dedicated API or more sophisticated parsing
+        return nil  // Return nil to indicate we couldn't find a direct album URL
+    }
 
     // MARK: - Apple Music (iTunes Search API)
 
