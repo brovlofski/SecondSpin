@@ -24,7 +24,7 @@ struct TagAlbumsView: View {
                 ContentUnavailableView(
                     "No Albums",
                     systemImage: "tag",
-                    description: Text("No albums in your collection are tagged "\(tag)".")
+                    description: Text("No albums in your collection are tagged \"\(tag)\".")
                 )
             } else {
                 ScrollView {
