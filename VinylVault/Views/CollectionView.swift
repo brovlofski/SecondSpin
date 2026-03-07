@@ -231,29 +231,22 @@ struct GridItemView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ZStack(alignment: .topTrailing) {
-                // Square background box with gray color
-                Rectangle()
-                    .fill(Color.gray.opacity(0.15))
-                    .aspectRatio(1, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                
-                // Cover Image - natural aspect ratio centered in square box
+                // Square filler background — visible as letterbox bars on portrait artwork
+                Color.gray.opacity(0.15)
+
+                // Cover Image — fits within the square; portrait images get side bars
                 CachedAsyncImage(url: URL(string: release.coverImageURL)) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } placeholder: {
-                    Rectangle()
-                        .fill(Color.clear)
-                        .overlay(
-                            Image(systemName: "music.note")
-                                .font(.largeTitle)
-                                .foregroundColor(.gray)
-                        )
+                    Image(systemName: "music.note")
+                        .font(.largeTitle)
+                        .foregroundColor(.gray)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-                
+
                 // Copy Count Badge
                 if release.copyCount > 1 {
                     Text("\(release.copyCount)")
@@ -266,6 +259,9 @@ struct GridItemView: View {
                         .padding(8)
                 }
             }
+            // Force the whole ZStack to be a square, then clip to rounded rect
+            .aspectRatio(1, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
             
             // Title
             Text(release.title)
