@@ -189,26 +189,6 @@ struct ReleaseDetailView: View {
                                     }
                                 }
                             }
-                            Button {
-                                StreamingLinkService.shared.openNetEaseCloudMusic(
-                                    release: release,
-                                    artist: release.artist,
-                                    album: release.title
-                                )
-                            } label: {
-                                ZStack {
-                                    Image("NetEaseMusicIcon")
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 28, height: 28)
-                                    if isVerifyingLinks {
-                                        ProgressView()
-                                            .scaleEffect(0.6)
-                                            .frame(width: 28, height: 28)
-                                            .background(.ultraThinMaterial, in: Circle())
-                                    }
-                                }
-                            }
                         }
                     }
 

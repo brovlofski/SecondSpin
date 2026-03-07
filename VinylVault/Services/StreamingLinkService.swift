@@ -121,13 +121,11 @@ class StreamingLinkService {
 
         async let appleTask  = bestAppleMusicURL(for: release)
         async let spotifyTask = bestSpotifyURL(for: release)
-        async let neteaseTask = bestNetEaseCloudMusicURL(for: release)
 
-        let (appleURL, spotifyURL, neteaseURL) = await (appleTask, spotifyTask, neteaseTask)
+        let (appleURL, spotifyURL) = await (appleTask, spotifyTask)
 
         release.appleMusicAlbumURL  = appleURL  ?? release.appleMusicAlbumURL
         release.spotifyAlbumURL     = spotifyURL ?? release.spotifyAlbumURL
-        release.neteaseCloudMusicAlbumURL = neteaseURL ?? release.neteaseCloudMusicAlbumURL
         release.streamingLinksVerified = true
     }
 
@@ -192,38 +190,6 @@ class StreamingLinkService {
         }
     }
     
-    func openNetEaseCloudMusic(release: Release? = nil, artist: String, album: String) {
-        // Strategy: always try to open the NetEase app first using `open(_:completionHandler:)`.
-        // If the app is installed, iOS will open it; if not, the completion reports failure and
-        // we fall back to the web URL.  We do NOT use canOpenURL as a gate — it requires the
-        // scheme in LSApplicationQueriesSchemes and can return false on newer iOS even when the
-        // app is installed.
-        
-        let keywords = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let webFallback = URL(string: "https://music.163.com/#/search/m/?s=\(keywords)&type=10")!
-        
-        // Build the app URL: if we have a cached album web URL with an ID use it; otherwise search
-        let appURL: URL
-        if let stored = release?.neteaseCloudMusicAlbumURL,
-           let albumId = neteaseAlbumIDFromURL(stored),
-           let u = URL(string: "orpheus://album/\(albumId)") {
-            appURL = u
-        } else if let u = URL(string: "orpheus://search?keywords=\(keywords)") {
-            appURL = u
-        } else {
-            UIApplication.shared.open(webFallback)
-            return
-        }
-        
-        // Attempt to open the app; fall back to web on failure
-        UIApplication.shared.open(appURL, options: [:]) { [weak self] success in
-            guard !success else { return }
-            // App not installed or scheme unrecognised → open web
-            UIApplication.shared.open(webFallback)
-            _ = self  // suppress capture warning
-        }
-    }
-
     // MARK: - Helper: Quick Spotify album lookup
     
     private func searchSpotifyAlbumDirect(artist: String, album: String) async -> String? {
@@ -301,42 +267,6 @@ class StreamingLinkService {
     }
     func generateSpotifyLink(artist: String, album: String) -> URL? { spotifyWebURL(artist: artist, album: album) }
     func generateAppleMusicLink(artist: String, album: String) -> URL? { appleMusicURL(artist: artist, album: album) }
-
-    // MARK: - NetEase Cloud Music Search
-    
-    private func bestNetEaseCloudMusicURL(for release: Release) async -> String? {
-        // NetEase Cloud Music doesn't have a public API like Spotify/Apple Music,
-        // so we'll use web scraping to find the album.
-        let query = "\(release.title) \(release.artist)"
-        
-        // First try to search via web scraping
-        if let url = await searchNetEaseCloudMusicAlbum(artist: release.artist, album: release.title) {
-            return url
-        }
-        
-        // If that fails, return a search URL as fallback
-        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-        return "https://music.163.com/#/search/m/?s=\(encodedQuery)&type=10"
-    }
-    
-    private func searchNetEaseCloudMusicAlbum(artist: String, album: String) async -> String? {
-        // NetEase Cloud Music web search approach
-        // We'll try to construct a direct album URL based on common patterns
-        let query = "\(album) \(artist)"
-        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-        
-        // Try multiple approaches:
-        // 1. Direct web search to find album ID
-        // 2. Common URL patterns
-        
-        // Approach 1: Try to fetch search results page and parse for album link
-        // Note: NetEase Cloud Music is a single-page app, so parsing HTML is complex
-        // For now, we return nil and let the caller use the search URL fallback
-        _ = "https://music.163.com/#/search/m/?s=\(encodedQuery)&type=10"
-        
-        // In a production app, you might use a dedicated API or more sophisticated parsing
-        return nil  // Return nil to indicate we couldn't find a direct album URL
-    }
 
     // MARK: - Apple Music (iTunes Search API)
 
@@ -541,25 +471,6 @@ class StreamingLinkService {
         return comps[idx + 1]
     }
     
-    /// Extract NetEase album ID from a web URL such as:
-    /// - https://music.163.com/#/album?id=12345
-    /// - https://music.163.com/album?id=12345
-    private func neteaseAlbumIDFromURL(_ urlString: String) -> String? {
-        let pattern = "(?:#?/album\\?id=|/album\\?id=)(\\d+)"
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return nil }
-        let ns = urlString as NSString
-        let range = NSRange(location: 0, length: ns.length)
-        if let m = regex.firstMatch(in: urlString, options: [], range: range), m.numberOfRanges >= 2 {
-            return ns.substring(with: m.range(at: 1))
-        }
-        return nil
-    }
-    
-    /// Build NetEase app search URL (orpheus scheme)
-    private func neteaseAppSearchURL(artist: String, album: String) -> URL? {
-        let q = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        return URL(string: "orpheus://search?keywords=\(q)")
-    }
 }
 
 // MARK: - Optional convenience

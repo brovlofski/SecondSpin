@@ -195,22 +195,9 @@ struct HomeView: View {
                         }
                         .buttonStyle(.plain)
                         
-                        Button {
-                            StreamingLinkService.shared.openNetEaseCloudMusic(
-                                release: album,
-                                artist: album.artist,
-                                album: album.title
-                            )
-                        } label: {
-                            Image("NetEaseMusicIcon")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 44, height: 44)
-                        }
-                        .buttonStyle(.plain)
                     }
                 }
-                
+
                 // Wikipedia Description
                 if isLoadingWikipedia {
                     ProgressView()
