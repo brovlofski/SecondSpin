@@ -14,6 +14,14 @@
 - Example: "Milk & Kisses" by Cocteau Twins not found (https://en.wikipedia.org/wiki/Milk_%26_Kisses)
 - **Root Cause**: URL encoding and title normalization issues with ampersands and other special characters
 
+### 4. **Star Ratings Showing as "Rating" Text** ⭐ CRITICAL
+- Example: "Warm Your Heart" shows "Rating" instead of actual stars (★★★★)
+- **Root Cause**: Over-aggressive template marker removal was stripping Unicode star symbols
+
+### 5. **Numeric Ratings Not Displaying** (e.g., 5/10)
+- Example: NME's 5/10 rating not displayed at all
+- **Root Cause**: {{rating|5|10}} templates weren't being extracted before cleanup
+
 ## Fixes Implemented
 
 ### Fix 1: Enhanced Review Score Extraction
@@ -90,6 +98,27 @@ See updated files:
 2. **Pattern2 fallback** - Second pattern for edge cases
 3. **Duplicate detection** - Prevents adding same review twice
 4. **Better logging** - Shows review number for debugging
+5. **containsStarRating()** - New method to detect Unicode star symbols (★, ☆, ⭐, etc.)
+6. **Early template extraction** - Extract {{rating|X|Y}} BEFORE cleanup to preserve numeric ratings
+7. **Conditional template removal** - Only remove {{ }} markers when safe (not part of rating value)
+8. **Star symbol preservation** - Special handling to keep star characters intact through cleaning
+9. **String.matches()** extension - Helper for pattern matching in cleanup logic
+
+### Test Case: "Warm Your Heart"
+**Before Fix**:
+- Allmusic: "Rating" ❌
+- Rolling Stone: "Rating" ❌  
+- Orlando Sentinel: "Rating" ❌
+- NME: Not displayed ❌
+- The Windsor Star: "A" ✓
+
+**After Fix**:
+- Allmusic: "★★★★" ✓
+- Rolling Stone: "★★★★" ✓
+- Orlando Sentinel: "★★★★" ✓
+- The Vancouver Sun: "★★★★" ✓
+- NME: "5/10" ✓
+- The Windsor Star: "A" ✓
 
 ## Known Limitations
 
