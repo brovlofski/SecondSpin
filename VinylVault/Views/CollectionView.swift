@@ -98,21 +98,12 @@ struct CollectionView: View {
             .onChange(of: searchText) { _, _ in
                 updateFilteredReleases()
             }
-            .onChange(of: sortOption) { _, _ in
-                updateFilteredReleases()
+            .onChange(of: sortOption) { oldValue, newValue in
+                // Only reshuffle when the user explicitly switches TO Random
+                updateFilteredReleases(reshuffle: newValue == .random)
             }
             .onChange(of: selectedGenre) { _, _ in
                 updateFilteredReleases()
-            }
-            .onChange(of: viewMode) { _, _ in
-                // Re-randomize when switching between grid/list if Random is selected
-                updateFilteredReleases()
-            }
-            .onChange(of: appState.selectedTab) { _, newValue in
-                // Re-randomize each time the Collection tab is selected
-                if newValue == 1 && sortOption == .random {
-                    updateFilteredReleases()
-                }
             }
         }
     }
@@ -123,7 +114,9 @@ struct CollectionView: View {
         allGenres = Array(Set(releases.flatMap { $0.genres })).sorted()
     }
     
-    private func updateFilteredReleases() {
+    /// Update the displayed list, optionally re-shuffling when sort is Random.
+    /// Pass `reshuffle: true` only when the user explicitly picks "Random" from the sort menu.
+    private func updateFilteredReleases(reshuffle: Bool = false) {
         var filtered = releases
         
         // Search filter
@@ -142,7 +135,19 @@ struct CollectionView: View {
         // Sorting
         switch sortOption {
         case .random:
-            filtered.shuffle()
+            if reshuffle || filteredAndSortedReleases.isEmpty {
+                // Only re-shuffle when explicitly requested or on first load
+                filtered.shuffle()
+            } else {
+                // Preserve existing random order — just remove items that no longer match
+                let existingOrder = filteredAndSortedReleases
+                let filteredIDs = Set(filtered.map { $0.id })
+                var stable = existingOrder.filter { filteredIDs.contains($0.id) }
+                // Append any newly added releases (not yet in the stable order) at the end
+                let stableIDs = Set(stable.map { $0.id })
+                stable += filtered.filter { !stableIDs.contains($0.id) }
+                filtered = stable
+            }
         case .artist:
             filtered.sort { $0.artist.localizedCompare($1.artist) == .orderedAscending }
         case .title:
