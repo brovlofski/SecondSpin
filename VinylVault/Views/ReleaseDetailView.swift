@@ -32,6 +32,8 @@ struct ReleaseDetailView: View {
     @State private var isLoadingReviews = false
     @State private var musicBrainzMBID: String?
     @State private var expandedReviewId: String?
+    @State private var pitchforkBadge: PitchforkBadge?
+    @State private var isLoadingPitchfork = false
     
     var body: some View {
         ScrollView {
@@ -129,6 +131,19 @@ struct ReleaseDetailView: View {
                                         .clipShape(Capsule())
                                 }
                             }
+                        }
+                    }
+                    
+                    // Pitchfork Badge (if applicable)
+                    if let badge = pitchforkBadge {
+                        PitchforkBadgeView(badge: badge, compact: false)
+                    } else if isLoadingPitchfork {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Checking Pitchfork year-end lists...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                 }
@@ -470,14 +485,16 @@ struct ReleaseDetailView: View {
         isLoadingWikipedia = true
         isLoadingMusicBrainz = true
         isLoadingReviews = true
+        isLoadingPitchfork = true
         
         Task {
-            // Load Wikipedia and MusicBrainz data concurrently
+            // Load Wikipedia, MusicBrainz, and Pitchfork data concurrently
             async let wikipediaResult = fetchWikipediaData()
             async let musicBrainzResult = fetchMusicBrainzData()
+            async let pitchforkResult = fetchPitchforkBadge()
             
-            // Await both results
-            let (wikiData, mbData) = await (wikipediaResult, musicBrainzResult)
+            // Await all results
+            let (wikiData, mbData, pfBadge) = await (wikipediaResult, musicBrainzResult, pitchforkResult)
             
             // Update UI on main actor
             await MainActor.run {
@@ -496,6 +513,10 @@ struct ReleaseDetailView: View {
                 albumReviews = mbData.reviews
                 isLoadingMusicBrainz = false
                 isLoadingReviews = false
+                
+                // Pitchfork badge
+                pitchforkBadge = pfBadge
+                isLoadingPitchfork = false
             }
         }
     }
@@ -511,6 +532,13 @@ struct ReleaseDetailView: View {
             print("Error loading Wikipedia data: \(error)")
             return nil
         }
+    }
+    
+    private func fetchPitchforkBadge() async -> PitchforkBadge? {
+        return await PitchforkService.shared.getBadge(
+            for: release.artist,
+            album: release.title
+        )
     }
     
     private func fetchMusicBrainzData() async -> (rating: MusicBrainzRating?, genres: [MusicBrainzGenre], mbid: String?, reviews: [AlbumReview]) {
