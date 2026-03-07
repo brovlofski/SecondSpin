@@ -171,29 +171,39 @@ class StreamingLinkService {
     /// Opens the album in NetEase Cloud Music (网易云音乐).
     ///
     /// Resolution order:
-    ///   1. Cached deeplink on the release model (orpheus://album/{id}).
-    ///   2. Query the local netease-matcher service (http://localhost:3000).
-    ///   3. Web search fallback: music.163.com/search.
+    ///   1. Cached album ID → open orpheus://album?id={id} (app) or music.163.com/album?id={id} (web).
+    ///   2. Query the local netease-matcher service (http://localhost:3000) to resolve an album ID.
+    ///   3. Search fallback: orpheus://search?keyword= (app) or music.163.com search (web).
     func openNetEaseMusic(release: Release? = nil, artist: String, album: String) {
-        // 1. Use cached deeplink
-        if let stored = release?.neteaseCloudMusicAlbumURL, let url = URL(string: stored) {
-            UIApplication.shared.open(url); return
+        // 1. Use cached deeplink (orpheus://album?id={id})
+        if let stored = release?.neteaseCloudMusicAlbumURL,
+           let deepURL = URL(string: stored) {
+            if UIApplication.shared.canOpenURL(deepURL) {
+                UIApplication.shared.open(deepURL)
+            } else {
+                // App not installed – derive the album web URL from the stored album ID
+                let webURL = stored
+                    .replacingOccurrences(of: "orpheus://album?id=", with: "https://music.163.com/album?id=")
+                if let url = URL(string: webURL) { UIApplication.shared.open(url) }
+            }
+            return
         }
 
         Task {
-            // 2. Query local matcher service
+            // 2. Query local matcher service to get a NetEase album ID
             if let result = await queryNeteaseMatcherService(
                 discogsId: release?.discogsId,
                 artist: artist,
                 album: album
             ) {
-                // Persist deeplink if we have a release model
+                // Persist the resolved deeplink (orpheus://album?id={id})
                 if let release, !result.deeplink.isEmpty {
                     await MainActor.run { release.neteaseCloudMusicAlbumURL = result.deeplink }
                 }
                 await MainActor.run {
-                    if let url = URL(string: result.deeplink), UIApplication.shared.canOpenURL(url) {
-                        UIApplication.shared.open(url)
+                    if let appURL = URL(string: result.deeplink),
+                       UIApplication.shared.canOpenURL(appURL) {
+                        UIApplication.shared.open(appURL)
                     } else if let webURL = URL(string: result.webURL) {
                         UIApplication.shared.open(webURL)
                     }
@@ -201,11 +211,15 @@ class StreamingLinkService {
                 return
             }
 
-            // 3. Web fallback
+            // 3. No album ID resolved – try app search, fall back to web search
             let q = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
             await MainActor.run {
-                if let url = URL(string: "https://music.163.com/#/search/m/?s=\(q)&type=10") {
-                    UIApplication.shared.open(url)
+                // Try launching the NetEase app's search screen first
+                if let appSearchURL = URL(string: "orpheus://search?keyword=\(q)"),
+                   UIApplication.shared.canOpenURL(appSearchURL) {
+                    UIApplication.shared.open(appSearchURL)
+                } else if let webSearchURL = URL(string: "https://music.163.com/#/search/m/?s=\(q)&type=10") {
+                    UIApplication.shared.open(webSearchURL)
                 }
             }
         }
@@ -252,7 +266,7 @@ class StreamingLinkService {
               let albumId = json["albumId"] as? Int,
               albumId > 0 else { return nil }
 
-        let deeplink = "orpheus://album/\(albumId)"
+        let deeplink = "orpheus://album?id=\(albumId)"
         let webURL   = "https://music.163.com/album?id=\(albumId)"
         return NeteaseMatchResult(albumId: albumId, deeplink: deeplink, webURL: webURL)
     }
