@@ -42,3 +42,65 @@
 See updated files:
 - `WikipediaService.swift` - Fixed cache clearing and URL encoding
 - `WikipediaReviewParser.swift` - Enhanced regex patterns for review extraction
+
+## Testing Instructions
+
+### Test 1: Review Score Extraction
+**Album**: Bob Dylan - "Blood on the Tracks"
+- **Expected**: Should extract all 10 review scores from Wikipedia
+- **How to test**: 
+  1. Clear Wikipedia cache in Settings
+  2. Add "Blood on the Tracks" by Bob Dylan to collection
+  3. Open release details
+  4. Check Wikipedia section shows multiple review scores
+
+### Test 2: Cache Clearing
+**Test**: Clear Wikipedia Cache functionality
+- **Expected**: Cache should be cleared and persisted
+- **How to test**:
+  1. View several albums with Wikipedia data (cache gets populated)
+  2. Go to Settings > Cache > Clear Wikipedia Cache
+  3. Restart app
+  4. View same albums - data should be re-fetched (check console logs)
+
+### Test 3: Special Character Handling
+**Album**: Cocteau Twins - "Milk & Kisses"
+- **Expected**: Wikipedia page should be found despite ampersand
+- **URL**: https://en.wikipedia.org/wiki/Milk_%26_Kisses
+- **How to test**:
+  1. Clear Wikipedia cache
+  2. Add "Milk & Kisses" by Cocteau Twins
+  3. Open release details
+  4. Wikipedia section should display correctly
+
+### Additional Test Cases
+- Albums with apostrophes: "Don't Stop" → "Dont Stop"
+- Albums with "and": "Beauty and the Beat" ↔ "Beauty & the Beat"
+- Albums with special formatting in review tables
+
+## Technical Changes
+
+### WikipediaService.swift
+1. **clearCache()** - Now removes data from UserDefaults and persists
+2. **generateTitleVariations()** - New method to handle special characters
+3. **predictedTitles()** - Enhanced to generate multiple variations per template
+
+### WikipediaReviewParser.swift
+1. **Enhanced regex patterns** - Added multiline support with `.dotMatchesLineSeparators`
+2. **Pattern2 fallback** - Second pattern for edge cases
+3. **Duplicate detection** - Prevents adding same review twice
+4. **Better logging** - Shows review number for debugging
+
+## Known Limitations
+
+1. **Wikitext Complexity**: Some exotic wikitext formats may still not parse
+2. **API Rate Limits**: Clearing cache and refetching all data may hit Wikipedia rate limits
+3. **Language**: Currently only supports English Wikipedia pages
+
+## Future Improvements
+
+- [ ] Add support for other language Wikipedias
+- [ ] Implement exponential backoff for API rate limiting
+- [ ] Cache wikitext separately to avoid re-parsing
+- [ ] Add UI indicator when review scores are being fetched
+- [ ] Support for review score updates without clearing entire cache
