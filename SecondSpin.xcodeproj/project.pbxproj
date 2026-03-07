@@ -11,6 +11,7 @@
 		2ED357542F5AE49200B83487 /* MusicBrainzService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357532F5AE49200B83487 /* MusicBrainzService.swift */; };
 		2ED357552F5AE49200B83487 /* CritiqueBrainzService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357522F5AE49200B83487 /* CritiqueBrainzService.swift */; };
 		2ED3575A2F5B450000B83487 /* ReviewCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED3575B2F5B450000B83487 /* ReviewCardView.swift */; };
+		2ED3575C2F5C550000B83487 /* WikipediaReviewParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED3575D2F5C550000B83487 /* WikipediaReviewParser.swift */; };
 		AA0001 /* VinylVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0001 /* VinylVaultApp.swift */; };
 		AA0002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0002 /* ContentView.swift */; };
 		AA0003 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0003 /* HomeView.swift */; };
@@ -46,6 +47,7 @@
 		2ED357522F5AE49200B83487 /* CritiqueBrainzService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CritiqueBrainzService.swift; sourceTree = "<group>"; };
 		2ED357532F5AE49200B83487 /* MusicBrainzService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicBrainzService.swift; sourceTree = "<group>"; };
 		2ED3575B2F5B450000B83487 /* ReviewCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewCardView.swift; sourceTree = "<group>"; };
+		2ED3575D2F5C550000B83487 /* WikipediaReviewParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikipediaReviewParser.swift; sourceTree = "<group>"; };
 		AAAA01 /* SecondSpin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SecondSpin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB0001 /* VinylVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VinylVaultApp.swift; sourceTree = "<group>"; };
 		BB0002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -147,6 +149,7 @@
 				2ED357532F5AE49200B83487 /* MusicBrainzService.swift */,
 				BB0018 /* DiscogsService.swift */,
 				BB0019 /* WikipediaService.swift */,
+				2ED3575D2F5C550000B83487 /* WikipediaReviewParser.swift */,
 				BB0020 /* StreamingLinkService.swift */,
 				BB0025 /* AlbumArtworkService.swift */,
 				BB0031 /* BackupService.swift */,
@@ -280,6 +283,7 @@
 				2ED3575A2F5B450000B83487 /* ReviewCardView.swift in Sources */,
 				2ED357542F5AE49200B83487 /* MusicBrainzService.swift in Sources */,
 				2ED357552F5AE49200B83487 /* CritiqueBrainzService.swift in Sources */,
+				2ED3575C2F5C550000B83487 /* WikipediaReviewParser.swift in Sources */,
 				AA0003 /* HomeView.swift in Sources */,
 				AA0004 /* CollectionView.swift in Sources */,
 				AA0005 /* ListsView.swift in Sources */,
