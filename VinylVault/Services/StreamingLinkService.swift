@@ -193,25 +193,66 @@ class StreamingLinkService {
     }
     
     func openNetEaseCloudMusic(release: Release? = nil, artist: String, album: String) {
-        // Try to use cached URL if available
-        if let stored = release?.neteaseCloudMusicAlbumURL, let url = URL(string: stored) {
-            UIApplication.shared.open(url); return
+        // Prefer opening the NetEase Cloud Music iOS app via deep link, with web fallback
+        // 1) If we have a cached web album URL, try to extract the album ID and open via app scheme
+        if let stored = release?.neteaseCloudMusicAlbumURL {
+            if let albumId = neteaseAlbumIDFromURL(stored) {
+                // Try common NetEase app URL schemes
+                let appCandidates = [
+                    URL(string: "orpheus://album/\(albumId)"),
+                    URL(string: "orpheus://album?id=\(albumId)"),
+                    URL(string: "neteasemusic://album/\(albumId)")
+                ].compactMap { $0 }
+                
+                for appURL in appCandidates {
+                    if UIApplication.shared.canOpenURL(appURL) {
+                        UIApplication.shared.open(appURL)
+                        return
+                    }
+                }
+            }
+            // Fallback to the stored web URL
+            if let web = URL(string: stored) {
+                UIApplication.shared.open(web)
+                return
+            }
         }
         
-        // Fallback: Try to search for the album on NetEase Cloud Music
+        // 2) No cached URL → attempt to search and open
         Task {
             if let directURL = await self.searchNetEaseCloudMusicAlbum(artist: artist, album: album) {
+                // If a direct web album URL is found, prefer app deep link using extracted album id
+                if let albumId = neteaseAlbumIDFromURL(directURL) {
+                    let appCandidates = [
+                        URL(string: "orpheus://album/\(albumId)"),
+                        URL(string: "orpheus://album?id=\(albumId)"),
+                        URL(string: "neteasemusic://album/\(albumId)")
+                    ].compactMap { $0 }
+                    
+                    for appURL in appCandidates {
+                        if UIApplication.shared.canOpenURL(appURL) {
+                            await MainActor.run {
+                                UIApplication.shared.open(appURL)
+                            }
+                            return
+                        }
+                    }
+                }
+                // Otherwise fall back to the found web URL
                 await MainActor.run {
                     if let url = URL(string: directURL) {
                         UIApplication.shared.open(url)
                     }
                 }
             } else {
-                // Final fallback: generic search on NetEase Cloud Music website
-                let q = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                // 3) Final fallback: app search, then web search
+                let keywords = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
                 await MainActor.run {
-                    if let url = URL(string: "https://music.163.com/#/search/m/?s=\(q)&type=10") {
-                        UIApplication.shared.open(url)
+                    if let appSearch = neteaseAppSearchURL(artist: artist, album: album),
+                       UIApplication.shared.canOpenURL(appSearch) {
+                        UIApplication.shared.open(appSearch)
+                    } else if let webURL = URL(string: "https://music.163.com/#/search/m/?s=\(keywords)&type=10") {
+                        UIApplication.shared.open(webURL)
                     }
                 }
             }
@@ -533,6 +574,26 @@ class StreamingLinkService {
         let comps = url.pathComponents
         guard let idx = comps.firstIndex(of: "album"), idx + 1 < comps.count else { return nil }
         return comps[idx + 1]
+    }
+    
+    /// Extract NetEase album ID from a web URL such as:
+    /// - https://music.163.com/#/album?id=12345
+    /// - https://music.163.com/album?id=12345
+    private func neteaseAlbumIDFromURL(_ urlString: String) -> String? {
+        let pattern = "(?:#?/album\\?id=|/album\\?id=)(\\d+)"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return nil }
+        let ns = urlString as NSString
+        let range = NSRange(location: 0, length: ns.length)
+        if let m = regex.firstMatch(in: urlString, options: [], range: range), m.numberOfRanges >= 2 {
+            return ns.substring(with: m.range(at: 1))
+        }
+        return nil
+    }
+    
+    /// Build NetEase app search URL (orpheus scheme)
+    private func neteaseAppSearchURL(artist: String, album: String) -> URL? {
+        let q = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        return URL(string: "orpheus://search?keywords=\(q)")
     }
 }
 

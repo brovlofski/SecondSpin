@@ -23,6 +23,8 @@
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>spotify</string>
+		<string>orpheus</string>
+		<string>neteasemusic</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>

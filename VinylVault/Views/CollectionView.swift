@@ -14,6 +14,7 @@ enum CollectionViewMode {
 }
 
 enum SortOption: String, CaseIterable {
+    case random = "Random"
     case artist = "Artist"
     case title = "Title"
     case year = "Year"
@@ -22,10 +23,11 @@ enum SortOption: String, CaseIterable {
 
 struct CollectionView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var appState: AppState
     @Query private var releases: [Release]
     
     @State private var viewMode: CollectionViewMode = .grid
-    @State private var sortOption: SortOption = .artist
+    @State private var sortOption: SortOption = .random
     @State private var searchText = ""
     @State private var selectedGenre: String?
     
@@ -102,6 +104,16 @@ struct CollectionView: View {
             .onChange(of: selectedGenre) { _, _ in
                 updateFilteredReleases()
             }
+            .onChange(of: viewMode) { _, _ in
+                // Re-randomize when switching between grid/list if Random is selected
+                updateFilteredReleases()
+            }
+            .onChange(of: appState.selectedTab) { _, newValue in
+                // Re-randomize each time the Collection tab is selected
+                if newValue == 1 && sortOption == .random {
+                    updateFilteredReleases()
+                }
+            }
         }
     }
     
@@ -129,6 +141,8 @@ struct CollectionView: View {
         
         // Sorting
         switch sortOption {
+        case .random:
+            filtered.shuffle()
         case .artist:
             filtered.sort { $0.artist.localizedCompare($1.artist) == .orderedAscending }
         case .title:
