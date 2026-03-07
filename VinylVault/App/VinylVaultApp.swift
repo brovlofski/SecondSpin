@@ -12,6 +12,7 @@ import SwiftData
 struct VinylVaultApp: App {
     let modelContainer: ModelContainer
     @StateObject private var appState = AppState()
+    @AppStorage("appearanceMode") private var appearanceMode = 0 // 0: System, 1: Light, 2: Dark
 
     init() {
         let schema = Schema([
@@ -104,7 +105,18 @@ struct VinylVaultApp: App {
             ContentView()
                 .modelContainer(modelContainer)
                 .environmentObject(appState)
-                .preferredColorScheme(nil) // Support system light/dark mode
+                .preferredColorScheme(colorScheme)
+        }
+    }
+    
+    // MARK: - Computed Properties
+    
+    /// Maps the appearance mode setting to a SwiftUI ColorScheme
+    private var colorScheme: ColorScheme? {
+        switch appearanceMode {
+        case 1: return .light
+        case 2: return .dark
+        default: return nil  // System default
         }
     }
 }

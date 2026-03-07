@@ -61,7 +61,8 @@ struct SettingsView: View {
     // MARK: Cache state
     @State private var selectedCacheSizeIndex: Int = 2  // default 1 GB
     @State private var currentDiskCacheBytes: Int = 0
-    @State private var showClearCacheConfirm = false
+    @State private var showClearImageCacheConfirm = false
+    @State private var showClearWikipediaCacheConfirm = false
 
     // MARK: Misc state
     @State private var showingICloudComingSoon = false
@@ -280,15 +281,15 @@ struct SettingsView: View {
                     }
 
                     Button(role: .destructive) {
-                        showClearCacheConfirm = true
+                        showClearImageCacheConfirm = true
                     } label: {
                         Label(NSLocalizedString("Clear Image Cache", comment: ""), systemImage: "trash")
                     }
                     
                     Button(role: .destructive) {
-                        WikipediaService.shared.clearCache()
+                        showClearWikipediaCacheConfirm = true
                     } label: {
-                        Label(NSLocalizedString("Clear Wikipedia Cache", comment: ""), systemImage: "doc.text.fill.badge.ellipsis")
+                        Label(NSLocalizedString("Clear Wikipedia Cache", comment: ""), systemImage: "trash")
                     }
                 } header: {
                     Label(NSLocalizedString("Cache", comment: ""), systemImage: "externaldrive.fill.badge.checkmark")
@@ -319,7 +320,7 @@ struct SettingsView: View {
             .onAppear { refreshCacheInfo() }
 
             // ── Alerts ────────────────────────────────────────────────────────
-            .alert(NSLocalizedString("Clear Image Cache", comment: ""), isPresented: $showClearCacheConfirm) {
+            .alert(NSLocalizedString("Clear Image Cache", comment: ""), isPresented: $showClearImageCacheConfirm) {
                 Button(NSLocalizedString("Clear", comment: ""), role: .destructive) {
                     ImageCache.shared.clear()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { refreshCacheInfo() }
@@ -328,6 +329,16 @@ struct SettingsView: View {
             } message: {
                 Text(NSLocalizedString(
                     "This will delete all cached images. They will be re-downloaded as needed.",
+                    comment: ""))
+            }
+            .alert(NSLocalizedString("Clear Wikipedia Cache", comment: ""), isPresented: $showClearWikipediaCacheConfirm) {
+                Button(NSLocalizedString("Clear", comment: ""), role: .destructive) {
+                    WikipediaService.shared.clearCache()
+                }
+                Button(NSLocalizedString("Cancel", comment: ""), role: .cancel) {}
+            } message: {
+                Text(NSLocalizedString(
+                    "This will delete all cached Wikipedia data. Album descriptions and review scores will be re-downloaded as needed.",
                     comment: ""))
             }
             .alert(NSLocalizedString("iCloud Sync", comment: ""), isPresented: $showingICloudComingSoon) {
