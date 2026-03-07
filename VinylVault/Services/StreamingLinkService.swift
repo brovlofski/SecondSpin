@@ -166,6 +166,97 @@ class StreamingLinkService {
         }
     }
 
+    // MARK: - Public: open NetEase Cloud Music
+
+    /// Opens the album in NetEase Cloud Music (网易云音乐).
+    ///
+    /// Resolution order:
+    ///   1. Cached deeplink on the release model (orpheus://album/{id}).
+    ///   2. Query the local netease-matcher service (http://localhost:3000).
+    ///   3. Web search fallback: music.163.com/search.
+    func openNetEaseMusic(release: Release? = nil, artist: String, album: String) {
+        // 1. Use cached deeplink
+        if let stored = release?.neteaseCloudMusicAlbumURL, let url = URL(string: stored) {
+            UIApplication.shared.open(url); return
+        }
+
+        Task {
+            // 2. Query local matcher service
+            if let result = await queryNeteaseMatcherService(
+                discogsId: release?.discogsId,
+                artist: artist,
+                album: album
+            ) {
+                // Persist deeplink if we have a release model
+                if let release, !result.deeplink.isEmpty {
+                    await MainActor.run { release.neteaseCloudMusicAlbumURL = result.deeplink }
+                }
+                await MainActor.run {
+                    if let url = URL(string: result.deeplink), UIApplication.shared.canOpenURL(url) {
+                        UIApplication.shared.open(url)
+                    } else if let webURL = URL(string: result.webURL) {
+                        UIApplication.shared.open(webURL)
+                    }
+                }
+                return
+            }
+
+            // 3. Web fallback
+            let q = "\(artist) \(album)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+            await MainActor.run {
+                if let url = URL(string: "https://music.163.com/#/search/m/?s=\(q)&type=10") {
+                    UIApplication.shared.open(url)
+                }
+            }
+        }
+    }
+
+    // MARK: - NetEase matcher service response
+
+    private struct NeteaseMatchResult {
+        let albumId: Int
+        let deeplink: String   // orpheus://album/{id}
+        let webURL: String     // https://music.163.com/album?id={id}
+    }
+
+    /// Calls the local netease-matcher micro-service and returns a match result,
+    /// or nil when the service is unreachable, returns no match, or confidence is too low.
+    private func queryNeteaseMatcherService(
+        discogsId: Int?,
+        artist: String,
+        album: String
+    ) async -> NeteaseMatchResult? {
+        // Build URL: prefer discogsId lookup, fall back to artist+album
+        var components = URLComponents(string: "http://localhost:3000/match")!
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "artist", value: artist),
+            URLQueryItem(name: "album",  value: album),
+        ]
+        if let id = discogsId {
+            items.append(URLQueryItem(name: "discogsId", value: String(id)))
+        }
+        components.queryItems = items
+
+        guard let url = components.url else { return nil }
+
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 5          // don't block UI for long
+
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              let http = resp as? HTTPURLResponse,
+              http.statusCode == 200 else { return nil }
+
+        // Expected JSON: { "matched": true, "albumId": 123, "confidence": 0.9, ... }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let matched = json["matched"] as? Bool, matched,
+              let albumId = json["albumId"] as? Int,
+              albumId > 0 else { return nil }
+
+        let deeplink = "orpheus://album/\(albumId)"
+        let webURL   = "https://music.163.com/album?id=\(albumId)"
+        return NeteaseMatchResult(albumId: albumId, deeplink: deeplink, webURL: webURL)
+    }
+
     func openAppleMusic(release: Release? = nil, artist: String, album: String) {
         if let stored = release?.appleMusicAlbumURL, let url = URL(string: stored) {
             UIApplication.shared.open(url); return

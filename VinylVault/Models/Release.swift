@@ -32,6 +32,8 @@ final class Release: @unchecked Sendable {
     var spotifyAlbumURL: String?
     /// Verified direct Apple Music album URL (nil = not yet resolved)
     var appleMusicAlbumURL: String?
+    /// Verified NetEase Cloud Music album deeplink (orpheus://album/{id}) or nil
+    var neteaseCloudMusicAlbumURL: String?
     /// True once the streaming links have been searched and cached
     var streamingLinksVerified: Bool
 
@@ -79,6 +81,7 @@ final class Release: @unchecked Sendable {
         self.tracklist = tracklist
         self.spotifyAlbumURL = nil
         self.appleMusicAlbumURL = nil
+        self.neteaseCloudMusicAlbumURL = nil
         self.streamingLinksVerified = false
         self.copies = []
         self.lists = []

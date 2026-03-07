@@ -194,7 +194,20 @@ struct HomeView: View {
                                 .frame(width: 44, height: 44)
                         }
                         .buttonStyle(.plain)
-                        
+
+                        Button {
+                            StreamingLinkService.shared.openNetEaseMusic(
+                                release: album,
+                                artist: album.artist,
+                                album: album.title
+                            )
+                        } label: {
+                            Image("NetEaseMusicIcon")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
 
