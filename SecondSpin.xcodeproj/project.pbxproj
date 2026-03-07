@@ -12,13 +12,11 @@
 		2ED357552F5AE49200B83487 /* CritiqueBrainzService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357522F5AE49200B83487 /* CritiqueBrainzService.swift */; };
 		2ED3575A2F5B450000B83487 /* ReviewCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED3575B2F5B450000B83487 /* ReviewCardView.swift */; };
 		2ED3575C2F5C550000B83487 /* WikipediaReviewParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED3575D2F5C550000B83487 /* WikipediaReviewParser.swift */; };
-		2ED3575E2F5D660000B83487 /* PitchforkModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED3575F2F5D660000B83487 /* PitchforkModels.swift */; };
-		2ED357602F5D670000B83487 /* PitchforkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357612F5D670000B83487 /* PitchforkService.swift */; };
-		2ED357622F5D680000B83487 /* PitchforkBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357632F5D680000B83487 /* PitchforkBadgeView.swift */; };
 		AA0001 /* VinylVaultApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0001 /* VinylVaultApp.swift */; };
 		AA0002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0002 /* ContentView.swift */; };
 		AA0003 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0003 /* HomeView.swift */; };
 		AA0004 /* CollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0004 /* CollectionView.swift */; };
+		AA0099 /* TagAlbumsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0099 /* TagAlbumsView.swift */; };
 		AA0005 /* ListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0005 /* ListsView.swift */; };
 		AA0006 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0006 /* SearchView.swift */; };
 		AA0007 /* AddRecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0007 /* AddRecordView.swift */; };
@@ -52,14 +50,12 @@
 		2ED357532F5AE49200B83487 /* MusicBrainzService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicBrainzService.swift; sourceTree = "<group>"; };
 		2ED3575B2F5B450000B83487 /* ReviewCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewCardView.swift; sourceTree = "<group>"; };
 		2ED3575D2F5C550000B83487 /* WikipediaReviewParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikipediaReviewParser.swift; sourceTree = "<group>"; };
-		2ED3575F2F5D660000B83487 /* PitchforkModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PitchforkModels.swift; sourceTree = "<group>"; };
-		2ED357612F5D670000B83487 /* PitchforkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PitchforkService.swift; sourceTree = "<group>"; };
-		2ED357632F5D680000B83487 /* PitchforkBadgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PitchforkBadgeView.swift; sourceTree = "<group>"; };
 		AAAA01 /* SecondSpin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SecondSpin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB0001 /* VinylVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VinylVaultApp.swift; sourceTree = "<group>"; };
 		BB0002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		BB0003 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		BB0004 /* CollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionView.swift; sourceTree = "<group>"; };
+		BB0099 /* TagAlbumsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagAlbumsView.swift; sourceTree = "<group>"; };
 		BB0005 /* ListsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListsView.swift; sourceTree = "<group>"; };
 		BB0006 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		BB0007 /* AddRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRecordView.swift; sourceTree = "<group>"; };
@@ -143,7 +139,6 @@
 			isa = PBXGroup;
 			children = (
 				2ED357502F5AE45B00B83487 /* MusicBrainzModels.swift */,
-				2ED3575F2F5D660000B83487 /* PitchforkModels.swift */,
 				BB0015 /* Release.swift */,
 				BB0016 /* Copy.swift */,
 				BB0017 /* RecordList.swift */,
@@ -156,7 +151,6 @@
 			children = (
 				2ED357522F5AE49200B83487 /* CritiqueBrainzService.swift */,
 				2ED357532F5AE49200B83487 /* MusicBrainzService.swift */,
-				2ED357612F5D670000B83487 /* PitchforkService.swift */,
 				BB0018 /* DiscogsService.swift */,
 				BB0019 /* WikipediaService.swift */,
 				2ED3575D2F5C550000B83487 /* WikipediaReviewParser.swift */,
@@ -174,6 +168,7 @@
 				BB0002 /* ContentView.swift */,
 				BB0003 /* HomeView.swift */,
 				BB0004 /* CollectionView.swift */,
+				BB0099 /* TagAlbumsView.swift */,
 				BB0005 /* ListsView.swift */,
 				BB0006 /* SearchView.swift */,
 				BB0007 /* AddRecordView.swift */,
@@ -211,7 +206,6 @@
 			isa = PBXGroup;
 			children = (
 				2ED3575B2F5B450000B83487 /* ReviewCardView.swift */,
-				2ED357632F5D680000B83487 /* PitchforkBadgeView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -295,11 +289,9 @@
 				2ED357542F5AE49200B83487 /* MusicBrainzService.swift in Sources */,
 				2ED357552F5AE49200B83487 /* CritiqueBrainzService.swift in Sources */,
 				2ED3575C2F5C550000B83487 /* WikipediaReviewParser.swift in Sources */,
-				2ED3575E2F5D660000B83487 /* PitchforkModels.swift in Sources */,
-				2ED357602F5D670000B83487 /* PitchforkService.swift in Sources */,
-				2ED357622F5D680000B83487 /* PitchforkBadgeView.swift in Sources */,
 				AA0003 /* HomeView.swift in Sources */,
 				AA0004 /* CollectionView.swift in Sources */,
+				AA0099 /* TagAlbumsView.swift in Sources */,
 				AA0005 /* ListsView.swift in Sources */,
 				AA0006 /* SearchView.swift in Sources */,
 				AA0007 /* AddRecordView.swift in Sources */,

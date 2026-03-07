@@ -117,17 +117,21 @@ struct ReleaseDetailView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     
-                    // Genres and Styles
+                    // Genres and Styles — tappable tags
                     if !release.genres.isEmpty || !release.styles.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
                                 ForEach(release.genres + release.styles, id: \.self) { tag in
-                                    Text(tag)
-                                        .font(.caption)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(Color.accentColor.opacity(0.2))
-                                        .clipShape(Capsule())
+                                    NavigationLink(destination: TagAlbumsView(tag: tag)) {
+                                        Text(tag)
+                                            .font(.caption)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(Color.accentColor.opacity(0.2))
+                                            .foregroundStyle(Color.accentColor)
+                                            .clipShape(Capsule())
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
                         }
