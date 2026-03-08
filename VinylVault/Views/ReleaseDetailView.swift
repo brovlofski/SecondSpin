@@ -310,20 +310,26 @@ struct ReleaseDetailView: View {
                         Text("Critical Reception")
                             .font(.headline)
                         
-                        VStack(spacing: 12) {
+                        VStack(spacing: 8) {
                             ForEach(wikipediaReviewScores) { score in
-                                HStack(alignment: .top) {
+                                HStack(alignment: .center, spacing: 12) {
                                     Text(score.source)
                                         .font(.subheadline)
                                         .fontWeight(.medium)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .frame(maxWidth: 140, alignment: .leading)
+                                        .lineLimit(2)
+                                        .minimumScaleFactor(0.8)
                                     
+                                    Spacer()
+                                    
+                                    // Display rating as raw text (no conversion)
                                     Text(score.rating)
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
                                         .multilineTextAlignment(.trailing)
+                                        .lineLimit(1)
                                 }
-                                .padding(.vertical, 8)
+                                .frame(height: 44) // Fixed height for consistent spacing
                                 .padding(.horizontal, 12)
                                 .background(Color(.systemGray6))
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
