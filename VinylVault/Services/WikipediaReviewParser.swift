@@ -25,7 +25,7 @@ struct WikipediaReviewParser {
     
     // MARK: - Main Parsing Entry Point
     
-    /// Extracts review scores from Wikipedia wikitext as raw text
+    /// Extracts review scores from Wikipedia wikitext, sorted with priority publications first
     static func parseReviewScores(from wikitext: String) -> [AlbumReviewScore] {
         log("=== Starting review score extraction ===")
         log("RAW_WIKI_TEXT length: \(wikitext.count) characters")
@@ -56,9 +56,32 @@ struct WikipediaReviewParser {
         let uniqueScores = removeDuplicates(from: allScores)
         log("Total unique scores extracted: \(uniqueScores.count)")
         
-        return uniqueScores
+        return sortReviewScores(uniqueScores)
     }
-    
+
+    // MARK: - Sorting
+
+    /// Sorts review scores: Allmusic, Pitchfork, Rolling Stone first (in that order),
+    /// remaining publications sorted alphabetically.
+    static func sortReviewScores(_ scores: [AlbumReviewScore]) -> [AlbumReviewScore] {
+        let priorityOrder = ["allmusic", "pitchfork", "rolling stone"]
+
+        return scores.sorted { a, b in
+            let aLower = a.source.lowercased()
+            let bLower = b.source.lowercased()
+
+            let aIdx = priorityOrder.firstIndex(where: { aLower.contains($0) })
+            let bIdx = priorityOrder.firstIndex(where: { bLower.contains($0) })
+
+            switch (aIdx, bIdx) {
+            case let (ai?, bi?): return ai < bi
+            case (.some, nil):   return true
+            case (nil, .some):   return false
+            case (nil, nil):     return a.source.localizedCaseInsensitiveCompare(b.source) == .orderedAscending
+            }
+        }
+    }
+
     // MARK: - Section Finding
     
     private static func findReviewSection(in wikitext: String) -> String? {

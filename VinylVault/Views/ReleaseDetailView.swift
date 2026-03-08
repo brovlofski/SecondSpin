@@ -18,6 +18,7 @@ struct ReleaseDetailView: View {
     @State private var wikipediaDescription: String?
     @State private var wikipediaURL: URL?
     @State private var wikipediaReviewScores: [AlbumReviewScore] = []
+    @State private var showAllReviewScores = false
     @State private var isLoadingWikipedia = false
     @State private var showFullDescription = false
     @State private var selectedCopy: Copy?
@@ -310,8 +311,12 @@ struct ReleaseDetailView: View {
                         Text("Critical Reception")
                             .font(.headline)
                         
+                        let visibleScores = showAllReviewScores
+                            ? wikipediaReviewScores
+                            : Array(wikipediaReviewScores.prefix(5))
+
                         VStack(spacing: 8) {
-                            ForEach(wikipediaReviewScores) { score in
+                            ForEach(visibleScores) { score in
                                 HStack(alignment: .center, spacing: 12) {
                                     Text(score.source)
                                         .font(.subheadline)
@@ -335,7 +340,29 @@ struct ReleaseDetailView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
                         }
-                        
+
+                        if wikipediaReviewScores.count > 5 {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showAllReviewScores.toggle()
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text(showAllReviewScores
+                                         ? "Show Less"
+                                         : "Show \(wikipediaReviewScores.count - 5) More")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                    Image(systemName: showAllReviewScores
+                                          ? "chevron.up"
+                                          : "chevron.down")
+                                        .font(.caption2)
+                                }
+                                .foregroundColor(.accentColor)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .center)
+                        }
+
                         if let wikiURL = wikipediaURL {
                             HStack {
                                 Spacer()
