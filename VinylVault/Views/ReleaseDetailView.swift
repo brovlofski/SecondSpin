@@ -33,6 +33,7 @@ struct ReleaseDetailView: View {
     @State private var isLoadingReviews = false
     @State private var musicBrainzMBID: String?
     @State private var expandedReviewId: String?
+    @State private var showAllReviewScores = false
     
     var body: some View {
         ScrollView {
@@ -227,7 +228,7 @@ struct ReleaseDetailView: View {
                     .frame(maxWidth: .infinity)
                 } else if let rating = musicBrainzRating, rating.votesCount > 0 {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Community Rating")
+                        Text("User Rating")
                             .font(.headline)
                         
                         HStack(spacing: 8) {
@@ -246,26 +247,6 @@ struct ReleaseDetailView: View {
                                 Text("\(rating.votesCount) votes")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                            }
-                        }
-                        
-                        // MusicBrainz genres (if different from Discogs)
-                        if !musicBrainzGenres.isEmpty {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(musicBrainzGenres.prefix(5)) { genre in
-                                        HStack(spacing: 4) {
-                                            Text(genre.name)
-                                            Text("(\(genre.count))")
-                                                .font(.caption2)
-                                        }
-                                        .font(.caption)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 5)
-                                        .background(Color.blue.opacity(0.15))
-                                        .clipShape(Capsule())
-                                    }
-                                }
                             }
                         }
                     }
@@ -304,14 +285,20 @@ struct ReleaseDetailView: View {
                     Divider()
                 }
                 
-                // Critical Reception Section (Wikipedia Professional Ratings)
+                // Professional Rating Section (Wikipedia Professional Ratings)
                 if !wikipediaReviewScores.isEmpty {
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Critical Reception")
-                            .font(.headline)
+                        HStack {
+                            Text("Professional Rating (\(wikipediaReviewScores.count))")
+                                .font(.headline)
+                            Spacer()
+                        }
                         
                         VStack(spacing: 8) {
-                            ForEach(wikipediaReviewScores) { score in
+                            // Only show first 5 reviews by default, or all if showAllReviewScores is true
+                            let displayedScores = showAllReviewScores ? wikipediaReviewScores : Array(wikipediaReviewScores.prefix(5))
+                            
+                            ForEach(displayedScores) { score in
                                 HStack(alignment: .center, spacing: 12) {
                                     Text(score.source)
                                         .font(.subheadline)
@@ -336,9 +323,29 @@ struct ReleaseDetailView: View {
                             }
                         }
                         
-                        if let wikiURL = wikipediaURL {
-                            HStack {
-                                Spacer()
+                        HStack {
+                            // Show "Show More" button if there are more than 5 reviews
+                            if wikipediaReviewScores.count > 5 {
+                                Button {
+                                    withAnimation {
+                                        showAllReviewScores.toggle()
+                                    }
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Text(showAllReviewScores ? "Show Less" : "Show More (\(wikipediaReviewScores.count - 5) more)")
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                        Image(systemName: showAllReviewScores ? "chevron.up" : "chevron.down")
+                                            .font(.caption2)
+                                    }
+                                    .foregroundColor(.accentColor)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            
+                            Spacer()
+                            
+                            if let wikiURL = wikipediaURL {
                                 Link(destination: wikiURL) {
                                     HStack(spacing: 4) {
                                         Text("View on Wikipedia")
@@ -410,8 +417,8 @@ struct ReleaseDetailView: View {
                             Button {
                                 showAddCopy = true
                             } label: {
-                                Label("Add Copy", systemImage: "plus.circle")
-                                    .font(.subheadline)
+                                Image(systemName: "plus.circle")
+                                    .font(.title3)
                             }
                         }
 

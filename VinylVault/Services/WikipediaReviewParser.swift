@@ -56,7 +56,11 @@ struct WikipediaReviewParser {
         let uniqueScores = removeDuplicates(from: allScores)
         log("Total unique scores extracted: \(uniqueScores.count)")
         
-        return uniqueScores
+        // Sort the scores according to requirements
+        let sortedScores = sortReviewScores(uniqueScores)
+        log("Sorted \(sortedScores.count) scores")
+        
+        return sortedScores
     }
     
     // MARK: - Section Finding
@@ -100,10 +104,8 @@ struct WikipediaReviewParser {
         
         // Improved pattern to capture full rating templates like {{Rating|X|Y}}
         // Captures: | revN = Source | revNscore = Rating (handles templates with pipes, refs, etc.)
-        // Pattern explanation: (?:[^{}|\\n]|\\{\\{[^{}]*\\}\\})*? matches either:
-        //   - Non-brace, non-pipe, non-newline characters
-        //   - OR complete {{...}} templates (which can contain pipes)
-        let pattern = "\\|\\s*rev(\\d+)\\s*=\\s*['\"]?([^|\\n]+?)['\"]?\\s*\\|\\s*rev\\1[Ss]core\\s*=\\s*((?:[^{}|\\n]|\\{\\{[^{}]*\\}\\})*?)(?=(?:<ref|\\||$))"
+        // Uses non-greedy matching to capture source cell content even if it contains pipes (e.g., wiki links)
+        let pattern = "\\|\\s*rev(\\d+)\\s*=\\s*(.+?)\\s*\\|\\s*rev\\1[Ss]core\\s*=\\s*([^<\\n]+)"
         
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]) else {
             return scores.isEmpty ? nil : scores
@@ -467,6 +469,9 @@ struct WikipediaReviewParser {
     private static func cleanWikiLinksMinimal(_ text: String) -> String {
         var result = text
         
+        // First handle special cases like "Pitchfork (website)|Pitchfork" -> "Pitchfork"
+        result = extractDisplayTextFromWikiLink(result)
+        
         // [[Link|Display Text]] -> Display Text
         result = result.replacingOccurrences(
             of: "\\[\\[([^|\\]]+)\\|([^\\]]+)\\]\\]",
@@ -498,6 +503,32 @@ struct WikipediaReviewParser {
         return result
     }
     
+    /// Extracts display text from wiki links, specifically handling cases like [[Pitchfork (website)|Pitchfork]]
+    private static func extractDisplayTextFromWikiLink(_ text: String) -> String {
+        var result = text
+        
+        // Handle [[Pitchfork (website)|Pitchfork]] -> Pitchfork
+        // Also handles [[Spin (magazine)|Spin]] -> Spin
+        // Pattern matches [[...|Display Text]] where Display Text is the part after |
+        let pattern = "\\[\\[[^\\]]*\\|([^\\]]+)\\]\\]"
+        
+        if let regex = try? NSRegularExpression(pattern: pattern) {
+            let nsRange = NSRange(result.startIndex..., in: result)
+            let matches = regex.matches(in: result, range: nsRange)
+            
+            for match in matches.reversed() {
+                if match.numberOfRanges >= 2,
+                   let displayTextRange = Range(match.range(at: 1), in: result) {
+                    let displayText = String(result[displayTextRange])
+                    let fullMatchRange = Range(match.range(at: 0), in: result)!
+                    result.replaceSubrange(fullMatchRange, with: displayText)
+                }
+            }
+        }
+        
+        return result
+    }
+    
     // MARK: - Helper Functions
     
     /// Removes duplicate scores (same source and rating)
@@ -514,6 +545,77 @@ struct WikipediaReviewParser {
         }
         
         return unique
+    }
+    
+    /// Sorts review scores according to requirements:
+    /// 1. Allmusic, Pitchfork, and Rolling Stones always on top
+    /// 2. Sort the rest alphabetically
+    /// 3. Remove single quote characters from all reviewer names
+    private static func sortReviewScores(_ scores: [AlbumReviewScore]) -> [AlbumReviewScore] {
+        guard !scores.isEmpty else { return scores }
+        
+        // Remove single quotes from source names
+        var processedScores = scores.map { score in
+            var cleanedSource = score.source
+            // Remove single quotes (both ' and ")
+            cleanedSource = cleanedSource.replacingOccurrences(of: "'", with: "")
+            cleanedSource = cleanedSource.replacingOccurrences(of: "\"", with: "")
+            cleanedSource = cleanedSource.replacingOccurrences(of: "''", with: "")
+            cleanedSource = cleanedSource.replacingOccurrences(of: "'''", with: "")
+            // Also remove any remaining bold/italic markers
+            cleanedSource = cleanedSource.replacingOccurrences(of: "''", with: "")
+            
+            return AlbumReviewScore(source: cleanedSource, rating: score.rating)
+        }
+        
+        // Define priority reviewers that should appear first
+        let priorityReviewers = ["AllMusic", "Pitchfork", "Rolling Stone"]
+        
+        // Separate into priority and other reviewers
+        var priorityScores: [AlbumReviewScore] = []
+        var otherScores: [AlbumReviewScore] = []
+        
+        for score in processedScores {
+            let sourceLower = score.source.lowercased()
+            var isPriority = false
+            
+            // Check if this is a priority reviewer (case-insensitive)
+            for priority in priorityReviewers {
+                if sourceLower.contains(priority.lowercased()) {
+                    isPriority = true
+                    break
+                }
+            }
+            
+            if isPriority {
+                priorityScores.append(score)
+            } else {
+                otherScores.append(score)
+            }
+        }
+        
+        // Sort priority reviewers in specific order: AllMusic, Pitchfork, Rolling Stone
+        priorityScores.sort { (score1, score2) -> Bool in
+            let s1 = score1.source.lowercased()
+            let s2 = score2.source.lowercased()
+            
+            // Get index in priority order (lower index = higher priority)
+            let index1 = priorityReviewers.firstIndex { s1.contains($0.lowercased()) } ?? Int.max
+            let index2 = priorityReviewers.firstIndex { s2.contains($0.lowercased()) } ?? Int.max
+            
+            if index1 != index2 {
+                return index1 < index2
+            }
+            
+            // If same priority level, sort alphabetically
+            return score1.source.lowercased() < score2.source.lowercased()
+        }
+        
+        // Sort other reviewers alphabetically
+        otherScores.sort { $0.source.lowercased() < $1.source.lowercased() }
+        
+        // Combine results
+        return priorityScores + otherScores
     }
     
     private static func isHeaderText(_ text: String) -> Bool {
