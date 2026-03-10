@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CC0011 /* CarPlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CC0010 /* CarPlay.framework */; };
+		2E73C6C92F600CE40039FCD0 /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E73C6C82F600CE40039FCD0 /* CarPlaySceneDelegate.swift */; };
 		2ED357512F5AE45B00B83487 /* MusicBrainzModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357502F5AE45B00B83487 /* MusicBrainzModels.swift */; };
 		2ED357542F5AE49200B83487 /* MusicBrainzService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357532F5AE49200B83487 /* MusicBrainzService.swift */; };
 		2ED357552F5AE49200B83487 /* CritiqueBrainzService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED357522F5AE49200B83487 /* CritiqueBrainzService.swift */; };
@@ -47,6 +49,7 @@
 
 /* Begin PBXFileReference section */
 		010FA1E92F5C742C0090CD12 /* Signing.local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.local.xcconfig; sourceTree = "<group>"; };
+		2E73C6C82F600CE40039FCD0 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
 		2ED357502F5AE45B00B83487 /* MusicBrainzModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicBrainzModels.swift; sourceTree = "<group>"; };
 		2ED357522F5AE49200B83487 /* CritiqueBrainzService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CritiqueBrainzService.swift; sourceTree = "<group>"; };
 		2ED357532F5AE49200B83487 /* MusicBrainzService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicBrainzService.swift; sourceTree = "<group>"; };
@@ -54,6 +57,7 @@
 		2ED3575D2F5C550000B83487 /* WikipediaReviewParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikipediaReviewParser.swift; sourceTree = "<group>"; };
 		2ED3575F2F5C550000B83488 /* StarRatingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarRatingView.swift; sourceTree = "<group>"; };
 		AAAA01 /* SecondSpin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SecondSpin.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CC0010 /* CarPlay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CarPlay.framework; path = System/Library/Frameworks/CarPlay.framework; sourceTree = SDKROOT; };
 		BB0001 /* VinylVaultApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VinylVaultApp.swift; sourceTree = "<group>"; };
 		BB0002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		BB0003 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -93,6 +97,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CC0011 /* CarPlay.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -104,6 +109,7 @@
 			children = (
 				DD0002 /* VinylVault */,
 				DD0003 /* Products */,
+				DD0011 /* Frameworks */,
 				010FA1E92F5C742C0090CD12 /* Signing.local.xcconfig */,
 			);
 			sourceTree = "<group>";
@@ -111,6 +117,7 @@
 		DD0002 /* VinylVault */ = {
 			isa = PBXGroup;
 			children = (
+				2E73C6C82F600CE40039FCD0 /* CarPlaySceneDelegate.swift */,
 				DD0004 /* App */,
 				DD0005 /* Models */,
 				DD0006 /* Services */,
@@ -128,6 +135,14 @@
 				AAAA01 /* SecondSpin.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		DD0011 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				CC0010 /* CarPlay.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		DD0004 /* App */ = {
@@ -323,6 +338,7 @@
 				AA0025 /* SettingsView.swift in Sources */,
 				AA0027 /* ImageGalleryView.swift in Sources */,
 				AA0028 /* BackupService.swift in Sources */,
+				2E73C6C92F600CE40039FCD0 /* CarPlaySceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -481,7 +497,7 @@
 				INFOPLIST_FILE = VinylVault/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_NSCameraUsageDescription = "VinylVault needs camera access to scan vinyl barcodes";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = NO;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -516,7 +532,7 @@
 				INFOPLIST_FILE = VinylVault/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_NSCameraUsageDescription = "VinylVault needs camera access to scan vinyl barcodes";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = NO;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
