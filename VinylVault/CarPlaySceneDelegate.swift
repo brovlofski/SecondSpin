@@ -4,18 +4,10 @@
 //
 //  CarPlay UI – CPNowPlayingTemplate
 //
-//  ┌──────────────────────────────────────────────────────────────────┐
-//  │                              │                                   │
-//  │   ALBUM ART  (~60 %)         │   Title  (large)                  │
-//  │                              │   Artist (medium)                 │
-//  │                              │   Year · Genre · Wikipedia intro  │
-//  │                              │                                   │
-//  ├──────────────────────────────┴───────────────────────────────────┤
-//  │  ◀◀  (disabled)   ■   ▶▶   │  [Spotify]   [Apple Music]         │
-//  └──────────────────────────────────────────────────────────────────┘
-//
-//  Navigation: swipe left / right on the artwork (triggers ◀◀ / ▶▶ commands).
-//  No other buttons are shown.
+//  Shows full-screen album artwork for the current "Album of the Day".
+//  Swipe left / right on the artwork to browse the collection.
+//  Two buttons in the rail: Spotify and Apple Music (same asset-catalog
+//  icons as the Home screen).
 //
 
 import MediaPlayer
@@ -35,8 +27,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
     private var currentIndex = 0
     private var modelContainer: ModelContainer?
 
-    /// Wikipedia extract cache – keyed "title|artist"
-    private var wikiCache: [String: String] = [:]
     /// Artwork cache – keyed by URL string
     private var artworkCache: [String: UIImage] = [:]
 
@@ -88,7 +78,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
 
         currentIndex = albumOfTheDayIndex()
         await pushNowPlayingTemplate()
-        await refreshNowPlayingContent(for: currentIndex, animated: false)
+        await refreshArtwork(for: currentIndex)
     }
 
     /// Stable daily index – changes at midnight, consistent across relaunches.
@@ -98,12 +88,11 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         return day % releases.count
     }
 
-    // MARK: - Remote Commands  (◀◀ / ▶▶ → swipe left / swipe right on artwork)
+    // MARK: - Remote Commands (swipe left / right on artwork)
 
     private func configureRemoteCommands() {
         let cc = MPRemoteCommandCenter.shared()
 
-        // Previous – swipe right on artwork
         cc.previousTrackCommand.isEnabled = true
         cc.previousTrackCommand.removeTarget(nil)
         cc.previousTrackCommand.addTarget { [weak self] _ in
@@ -112,7 +101,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
             return .success
         }
 
-        // Next – swipe left on artwork
         cc.nextTrackCommand.isEnabled = true
         cc.nextTrackCommand.removeTarget(nil)
         cc.nextTrackCommand.addTarget { [weak self] _ in
@@ -121,7 +109,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
             return .success
         }
 
-        // Disable all playback controls – this is a browse-only experience.
+        // Keep playback controls disabled – browse-only experience.
         [cc.playCommand,
          cc.pauseCommand,
          cc.stopCommand,
@@ -141,7 +129,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
     private func stepAlbum(by delta: Int) async {
         guard !releases.isEmpty else { return }
         currentIndex = ((currentIndex + delta) % releases.count + releases.count) % releases.count
-        await refreshNowPlayingContent(for: currentIndex, animated: true)
+        await refreshArtwork(for: currentIndex)
     }
 
     // MARK: - CPNowPlayingTemplate
@@ -150,104 +138,77 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
     private func pushNowPlayingTemplate() async {
         let template = CPNowPlayingTemplate.shared
         template.isAlbumArtistButtonEnabled = false
-        template.isUpNextButtonEnabled      = false
-        rebuildButtonRail()
+        template.isUpNextButtonEnabled = false
+        buildButtonRail()
         try? await interfaceController?.setRootTemplate(template, animated: false)
     }
 
-    /// Button rail – only Spotify and Apple Music; nothing else.
-    private func rebuildButtonRail() {
-        let spotifyBtn = CPNowPlayingImageButton(
-            image: symbolImage("music.note.list")
-        ) { [weak self] _ in
-            self?.openURL(self?.spotifyURL)
+    /// Two buttons only: Spotify (left) and Apple Music (right).
+    /// Uses the same named assets as the Home screen ("SpotifyIcon", "AppleMusicIcon").
+    private func buildButtonRail() {
+        let spotifyImage = UIImage(named: "SpotifyIcon")
+            ?? UIImage(systemName: "music.note.list")!
+
+        let appleMusicImage = UIImage(named: "AppleMusicIcon")
+            ?? UIImage(systemName: "music.note")!
+
+        let spotifyBtn = CPNowPlayingImageButton(image: spotifyImage) { [weak self] _ in
+            self?.openURL(self?.streamingURL(\.spotifyAlbumURL,
+                                             fallback: "spotify:search:"))
         }
 
-        let appleMusicBtn = CPNowPlayingImageButton(
-            image: symbolImage("applelogo")
-        ) { [weak self] _ in
-            self?.openURL(self?.appleMusicURL)
+        let appleMusicBtn = CPNowPlayingImageButton(image: appleMusicImage) { [weak self] _ in
+            self?.openURL(self?.streamingURL(\.appleMusicAlbumURL,
+                                             fallback: "https://music.apple.com/us/search?term="))
         }
 
         CPNowPlayingTemplate.shared.updateNowPlayingButtons([spotifyBtn, appleMusicBtn])
     }
 
-    // MARK: - Now Playing content
+    // MARK: - Artwork refresh
 
-    /// Writes a placeholder to MPNowPlayingInfoCenter immediately, then loads
-    /// real artwork + Wikipedia in parallel and updates again.
+    /// Writes placeholder instantly, then loads real artwork and updates.
     @MainActor
-    private func refreshNowPlayingContent(for index: Int, animated: Bool) async {
+    private func refreshArtwork(for index: Int) async {
         guard index < releases.count else { return }
         let release = releases[index]
 
-        // Instant update with placeholder while real data loads.
-        let placeholder = makeArtworkPlaceholder(for: release)
-        pushNowPlayingInfo(release: release, artwork: placeholder, wiki: nil)
+        // Show placeholder immediately so CarPlay renders the artwork area.
+        let placeholder = makeVinylPlaceholder(for: release)
+        publishToNowPlayingCenter(release: release, image: placeholder)
 
-        async let artworkTask = loadArtwork(for: release)
-        async let wikiTask    = loadWikipedia(for: release)
-        let (image, wikiText) = await (artworkTask, wikiTask)
+        // Load real artwork in background.
+        let realImage = await loadArtwork(for: release)
 
-        // Guard against stale responses if the user swiped away.
+        // Guard against stale response if user swiped again.
         guard currentIndex == index else { return }
 
-        pushNowPlayingInfo(release: release,
-                           artwork: image ?? placeholder,
-                           wiki: wikiText)
+        publishToNowPlayingCenter(release: release, image: realImage ?? placeholder)
     }
 
-    /// Builds the three-line right panel:
-    ///   Line 1 (title)   → album title
-    ///   Line 2 (artist)  → artist
-    ///   Line 3 (album)   → "year  ·  genre  ·  first sentence of Wikipedia intro"
-    private func pushNowPlayingInfo(release: Release,
-                                    artwork: UIImage?,
-                                    wiki: String?) {
-        // ── Right-panel line 3 ────────────────────────────────────────────────
-        var parts: [String] = []
-
-        if release.year > 0 { parts.append("\(release.year)") }
-
-        let genre = release.genres.first ?? release.styles.first ?? ""
-        if !genre.isEmpty { parts.append(genre) }
-
-        if let label = release.label.isEmpty ? nil : release.label {
-            parts.append(label)
+    /// Pushes the minimum required info to `MPNowPlayingInfoCenter`.
+    ///
+    /// Setting `MPNowPlayingInfoPropertyMediaType = .music` is **required** for
+    /// CarPlay's `CPNowPlayingTemplate` to render the artwork panel.
+    private func publishToNowPlayingCenter(release: Release, image: UIImage) {
+        let artworkSize = CGSize(width: 600, height: 600)
+        let artwork = MPMediaItemArtwork(boundsSize: artworkSize) { requestedSize in
+            // Resize image to whatever CarPlay asks for.
+            UIGraphicsImageRenderer(size: requestedSize).image { _ in
+                image.draw(in: CGRect(origin: .zero, size: requestedSize))
+            }
         }
 
-        if let wikiText = wiki, !wikiText.isEmpty {
-            // First meaningful sentence, capped at 180 chars.
-            let sentence = wikiText
-                .components(separatedBy: ". ")
-                .first(where: { $0.count > 20 }) ?? wikiText
-            let clipped = sentence.count > 180
-                ? String(sentence.prefix(177)) + "…"
-                : sentence
-            parts.append(clipped)
-        }
-
-        let subtitle = parts.joined(separator: "  ·  ")
-
-        // ── MPNowPlayingInfoCenter dictionary ────────────────────────────────
-        var info: [String: Any] = [
-            MPMediaItemPropertyTitle:                    release.title,
-            MPMediaItemPropertyArtist:                   release.artist,
-            MPMediaItemPropertyAlbumTitle:               subtitle,
-            MPNowPlayingInfoPropertyPlaybackRate:         0.0,
-            MPNowPlayingInfoPropertyElapsedPlaybackTime:  0.0,
-            MPMediaItemPropertyPlaybackDuration:          0.0,
-            MPNowPlayingInfoPropertyMediaType:
-                MPNowPlayingInfoMediaType.none.rawValue,
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = [
+            MPMediaItemPropertyTitle:                   release.title,
+            MPMediaItemPropertyArtist:                  release.artist,
+            MPMediaItemPropertyArtwork:                 artwork,
+            // .music tells CarPlay to render the full artwork layout.
+            MPNowPlayingInfoPropertyMediaType:          MPNowPlayingInfoMediaType.music.rawValue,
+            MPNowPlayingInfoPropertyPlaybackRate:       0.0,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: 0.0,
+            MPMediaItemPropertyPlaybackDuration:        0.0,
         ]
-
-        if let art = artwork {
-            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(
-                boundsSize: art.size
-            ) { _ in art }
-        }
-
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
     // MARK: - Artwork loading
@@ -264,8 +225,8 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         return img
     }
 
-    /// Generates a vinyl-label placeholder with title / artist text.
-    private func makeArtworkPlaceholder(for release: Release) -> UIImage {
+    /// Vinyl-disc placeholder rendered entirely in Core Graphics.
+    private func makeVinylPlaceholder(for release: Release) -> UIImage {
         let size = CGSize(width: 600, height: 600)
         return UIGraphicsImageRenderer(size: size).image { ctx in
             // Background
@@ -274,87 +235,73 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
 
             // Vinyl disc
             let m: CGFloat = size.width * 0.06
-            let vinylRect  = CGRect(x: m, y: m,
-                                    width: size.width - m * 2,
-                                    height: size.height - m * 2)
+            let vinylRect = CGRect(x: m, y: m,
+                                   width: size.width - m * 2,
+                                   height: size.height - m * 2)
             UIColor.black.withAlphaComponent(0.72).setFill()
             UIBezierPath(ovalIn: vinylRect).fill()
 
+            // Grooves (thin concentric circles)
+            let cx = size.width / 2, cy = size.height / 2
+            UIColor.white.withAlphaComponent(0.06).setStroke()
+            for r in stride(from: size.width * 0.20, through: size.width * 0.45, by: size.width * 0.025) {
+                let path = UIBezierPath(ovalIn: CGRect(x: cx - r, y: cy - r,
+                                                       width: r * 2, height: r * 2))
+                path.lineWidth = 0.5
+                path.stroke()
+            }
+
             // Centre label circle
-            let d = size.width * 0.38
+            let d = size.width * 0.36
             let labelRect = CGRect(x: (size.width - d) / 2,
                                    y: (size.height - d) / 2,
                                    width: d, height: d)
             UIColor.systemIndigo.setFill()
             UIBezierPath(ovalIn: labelRect).fill()
 
-            // Title / artist text
-            let titleFont  = UIFont.boldSystemFont(ofSize: size.width * 0.055)
-            let artistFont = UIFont.systemFont(ofSize: size.width * 0.042)
-            let white      = UIColor.white
+            // Centre hole
+            let hole: CGFloat = size.width * 0.04
+            UIColor.black.withAlphaComponent(0.9).setFill()
+            UIBezierPath(ovalIn: CGRect(x: cx - hole / 2, y: cy - hole / 2,
+                                        width: hole, height: hole)).fill()
 
-            let tAttr: [NSAttributedString.Key: Any] = [
-                .font: titleFont, .foregroundColor: white
-            ]
-            let aAttr: [NSAttributedString.Key: Any] = [
-                .font: artistFont,
-                .foregroundColor: white.withAlphaComponent(0.85)
-            ]
+            // Title + artist text on the label
+            let titleFont  = UIFont.boldSystemFont(ofSize: size.width * 0.055)
+            let artistFont = UIFont.systemFont(ofSize: size.width * 0.040)
+            let white = UIColor.white
+
+            let tAttr: [NSAttributedString.Key: Any] = [.font: titleFont,  .foregroundColor: white]
+            let aAttr: [NSAttributedString.Key: Any] = [.font: artistFont,
+                                                         .foregroundColor: white.withAlphaComponent(0.82)]
 
             let tStr = release.title  as NSString
             let aStr = release.artist as NSString
 
             let tSz = tStr.size(withAttributes: tAttr)
             let aSz = aStr.size(withAttributes: aAttr)
-            let cx  = size.width / 2
-            let cy  = size.height / 2
 
-            tStr.draw(at: CGPoint(x: cx - tSz.width / 2, y: cy - tSz.height - 4),
-                      withAttributes: tAttr)
-            aStr.draw(at: CGPoint(x: cx - aSz.width / 2, y: cy + 4),
-                      withAttributes: aAttr)
+            tStr.draw(at: CGPoint(x: cx - tSz.width / 2, y: cy - tSz.height - 4), withAttributes: tAttr)
+            aStr.draw(at: CGPoint(x: cx - aSz.width / 2, y: cy + 4), withAttributes: aAttr)
         }
     }
 
-    // MARK: - Wikipedia loading
+    // MARK: - Streaming URLs
 
-    private func loadWikipedia(for release: Release) async -> String? {
-        let key = "\(release.title.lowercased())|\(release.artist.lowercased())"
-        if let cached = wikiCache[key] { return cached }
-        let text = try? await WikipediaService.shared.fetchAlbumDescription(
-            albumTitle: release.title,
-            artist: release.artist,
-            year: release.year > 0 ? release.year : nil
-        )
-        if let text { wikiCache[key] = text }
-        return text
-    }
-
-    // MARK: - Streaming link helpers
-
-    private var spotifyURL: URL? {
+    private func streamingURL(_ keyPath: KeyPath<Release, String?>,
+                               fallback prefix: String) -> URL? {
         guard currentIndex < releases.count else { return nil }
         let r = releases[currentIndex]
-        if let raw = r.spotifyAlbumURL, !raw.isEmpty, let u = URL(string: raw) { return u }
+        if let stored = r[keyPath: keyPath], !stored.isEmpty, let u = URL(string: stored) {
+            return u
+        }
         let q = "\(r.artist) \(r.title)"
             .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        return URL(string: "spotify:search:\(q)")
-    }
-
-    private var appleMusicURL: URL? {
-        guard currentIndex < releases.count else { return nil }
-        let r = releases[currentIndex]
-        if let raw = r.appleMusicAlbumURL, !raw.isEmpty, let u = URL(string: raw) { return u }
-        let q = "\(r.artist) \(r.title)"
-            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        return URL(string: "https://music.apple.com/us/search?term=\(q)")
+        return URL(string: "\(prefix)\(q)")
     }
 
     private func openURL(_ url: URL?) {
         guard let url else { return }
-        DispatchQueue.main.async {
-            UIApplication.shared.open(url)
-        }
+        DispatchQueue.main.async { UIApplication.shared.open(url) }
     }
 
     // MARK: - Empty state
@@ -364,7 +311,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         let items = [
             CPInformationItem(
                 title: "Collection is empty",
-                detail: "Open the SecondSpin app on your iPhone and add some vinyl records to get started."
+                detail: "Open SecondSpin on your iPhone and add some vinyl records to get started."
             )
         ]
         let actions = [CPTextButton(title: "OK", textStyle: .cancel) { _ in }]
@@ -375,14 +322,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
             actions: actions
         )
         try? await interfaceController?.setRootTemplate(template, animated: false)
-    }
-
-    // MARK: - Helpers
-
-    private func symbolImage(_ name: String) -> UIImage {
-        let cfg = UIImage.SymbolConfiguration(pointSize: 28, weight: .medium)
-        return UIImage(systemName: name, withConfiguration: cfg)
-            ?? UIImage(systemName: "music.note")!
     }
 }
 
