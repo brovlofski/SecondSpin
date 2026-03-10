@@ -2,17 +2,17 @@
 //  CarPlaySceneDelegate.swift
 //  VinylVault
 //
-//  CarPlay scene delegate for SecondSpin – Album of the Day.
+//  CarPlay scene delegate – Album of the Day, powered by your real collection.
 //
-//  Layout (via CPNowPlayingTemplate):
-//    Left ~3/5  – large album artwork; ◀ / ▶ transport controls on either side;
-//                 streaming buttons (Spotify, Apple Music) along the bottom rail.
-//    Right ~2/5 – metadata panel: album title, artist, description text
-//                 (fed through MPNowPlayingInfoCenter).
+//  Layout (CPNowPlayingTemplate):
+//    Left  ~3/5  – large album artwork  ·  ◀ / ▶ transport controls (prev/next album)
+//                  Spotify + Apple Music streaming buttons in the button rail.
+//    Right ~2/5  – metadata panel: title (large), artist (medium),
+//                  year · Wikipedia intro (small, fed via MPNowPlayingInfoCenter).
 //
 
-import SwiftUI
 import MediaPlayer
+import SwiftData
 
 #if canImport(CarPlay)
 import CarPlay
@@ -20,64 +20,17 @@ import CarPlay
 @available(iOS 14.0, *)
 class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
 
-    // MARK: - Types
-
-    struct AlbumEntry {
-        let title: String
-        let artist: String
-        let year: Int
-        let description: String
-        let spotifyURL: String?
-        let appleMusicURL: String?
-    }
-
     // MARK: - State
 
     private var interfaceController: CPInterfaceController?
+    private var releases: [Release] = []
     private var currentIndex = 0
+    private var modelContainer: ModelContainer?
 
-    private let albums: [AlbumEntry] = [
-        AlbumEntry(
-            title: "Abbey Road",
-            artist: "The Beatles",
-            year: 1969,
-            description: "The eleventh studio album by the Beatles — the last recorded together. Side two's medley of fragments became one of rock's most celebrated sequences.",
-            spotifyURL: "spotify:album:0ETFjACtuP2ADo6LFhL6HN",
-            appleMusicURL: "https://music.apple.com/us/album/abbey-road/1441133100"
-        ),
-        AlbumEntry(
-            title: "Kind of Blue",
-            artist: "Miles Davis",
-            year: 1959,
-            description: "Widely regarded as the greatest jazz album ever recorded. Davis abandoned bebop's complex changes for modal improvisation, giving each soloist vast harmonic space.",
-            spotifyURL: "spotify:album:1weenld61qoidwYuZ1GESA",
-            appleMusicURL: "https://music.apple.com/us/album/kind-of-blue/1440650935"
-        ),
-        AlbumEntry(
-            title: "The Dark Side of the Moon",
-            artist: "Pink Floyd",
-            year: 1973,
-            description: "Pink Floyd's eighth studio album spent over 900 weeks on the Billboard 200. Themes of time, greed, and mental illness are woven through an unbroken conceptual arc.",
-            spotifyURL: "spotify:album:4LH4d3cOWNNsVw41Gqt2kv",
-            appleMusicURL: "https://music.apple.com/us/album/the-dark-side-of-the-moon/1065977164"
-        ),
-        AlbumEntry(
-            title: "Blue",
-            artist: "Joni Mitchell",
-            year: 1971,
-            description: "Ranked the greatest album of all time by Rolling Stone in 2020. Mitchell's confessional songwriting and open guitar tunings redefined the singer-songwriter form.",
-            spotifyURL: "spotify:album:1vz94WpXDVYIEGja8cjFNa",
-            appleMusicURL: "https://music.apple.com/us/album/blue/1440742903"
-        ),
-        AlbumEntry(
-            title: "Rumours",
-            artist: "Fleetwood Mac",
-            year: 1977,
-            description: "Recorded during the simultaneous breakdown of two relationships within the band. The result became one of the best-selling albums in history with four Top 10 singles.",
-            spotifyURL: "spotify:album:1bt6q2SruS5GXDXFbHM4MY",
-            appleMusicURL: "https://music.apple.com/us/album/rumours/1440839912"
-        )
-    ]
+    /// Cached Wikipedia extracts keyed by "title|artist".
+    private var wikiCache: [String: String] = [:]
+    /// Artwork cache keyed by URL string.
+    private var artworkCache: [String: UIImage] = [:]
 
     // MARK: - CPTemplateApplicationSceneDelegate
 
@@ -87,7 +40,10 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
     ) {
         self.interfaceController = interfaceController
         configureRemoteCommands()
-        pushNowPlayingTemplate()
+
+        Task { @MainActor in
+            await loadCollectionThenShow()
+        }
     }
 
     func templateApplicationScene(
@@ -99,7 +55,47 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
-    // MARK: - MPRemoteCommandCenter (drives the ◀ / ▶ transport buttons)
+    // MARK: - SwiftData
+
+    /// Creates a ModelContainer matching the main app's schema and fetches all releases.
+    @MainActor
+    private func loadCollectionThenShow() async {
+        do {
+            let schema = Schema([Release.self, Copy.self, RecordList.self])
+            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+            let container = try ModelContainer(for: schema, configurations: [config])
+            modelContainer = container
+
+            let context = ModelContext(container)
+            let descriptor = FetchDescriptor<Release>(
+                sortBy: [SortDescriptor(\.dateAdded, order: .reverse)]
+            )
+            releases = (try? context.fetch(descriptor)) ?? []
+        } catch {
+            releases = []
+        }
+
+        if releases.isEmpty {
+            showEmptyState()
+            return
+        }
+
+        currentIndex = albumOfTheDayIndex()
+        pushNowPlayingTemplate()
+
+        // Kick off artwork + Wikipedia loads for the initial album.
+        await refreshNowPlayingContent(for: currentIndex, animated: false)
+    }
+
+    /// Deterministic daily index – changes at midnight, stable across app launches.
+    private func albumOfTheDayIndex() -> Int {
+        guard !releases.isEmpty else { return 0 }
+        let cal = Calendar.current
+        let dayOfYear = cal.ordinality(of: .day, in: .year, for: Date()) ?? 1
+        return dayOfYear % releases.count
+    }
+
+    // MARK: - MPRemoteCommandCenter  (drives the ◀ / ▶ transport buttons)
 
     private func configureRemoteCommands() {
         let cc = MPRemoteCommandCenter.shared()
@@ -120,14 +116,12 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
             return .success
         }
 
-        // Disable controls that don't apply
-        cc.playCommand.isEnabled = false
-        cc.pauseCommand.isEnabled = false
-        cc.stopCommand.isEnabled = false
-        cc.togglePlayPauseCommand.isEnabled = false
-        cc.seekForwardCommand.isEnabled = false
-        cc.seekBackwardCommand.isEnabled = false
-        cc.changePlaybackPositionCommand.isEnabled = false
+        // Disable playback controls – this is a collection browser, not a player.
+        [cc.playCommand, cc.pauseCommand, cc.stopCommand,
+         cc.togglePlayPauseCommand, cc.seekForwardCommand,
+         cc.seekBackwardCommand, cc.changePlaybackPositionCommand].forEach {
+            $0.isEnabled = false
+        }
     }
 
     private func removeRemoteCommands() {
@@ -136,85 +130,359 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         cc.nextTrackCommand.removeTarget(nil)
     }
 
-    // MARK: - Template setup
+    // MARK: - Now Playing Template
 
     private func pushNowPlayingTemplate() {
-        refreshNowPlayingInfo()
-
         let template = CPNowPlayingTemplate.shared
+        template.isAlbumArtistButtonEnabled = false
+        template.isUpNextButtonEnabled = false
+        updateButtonRail()
+        interfaceController?.setRootTemplate(template, animated: false)
+    }
 
-        // Right panel: show album title + artist as tappable info button
-        template.isAlbumArtistButtonEnabled = true
+    /// Rebuilds the streaming / info button rail.
+    private func updateButtonRail() {
+        guard !releases.isEmpty else { return }
 
-        // Bottom streaming buttons  (max 5 custom buttons in the button rail)
         let spotifyBtn = CPNowPlayingImageButton(
             image: symbolImage("play.circle.fill")
         ) { [weak self] _ in
             DispatchQueue.main.async { self?.openSpotify() }
         }
+
         let appleMusicBtn = CPNowPlayingImageButton(
             image: symbolImage("music.note.list")
         ) { [weak self] _ in
             DispatchQueue.main.async { self?.openAppleMusic() }
         }
-        template.updateNowPlayingButtons([spotifyBtn, appleMusicBtn])
 
-        interfaceController?.setRootTemplate(template, animated: true)
+        let infoBtn = CPNowPlayingImageButton(
+            image: symbolImage("info.circle")
+        ) { [weak self] _ in
+            DispatchQueue.main.async { self?.showAlbumDetail() }
+        }
+
+        let browseBtn = CPNowPlayingImageButton(
+            image: symbolImage("rectangle.stack")
+        ) { [weak self] _ in
+            DispatchQueue.main.async { self?.showCollectionList() }
+        }
+
+        CPNowPlayingTemplate.shared.updateNowPlayingButtons(
+            [spotifyBtn, appleMusicBtn, infoBtn, browseBtn]
+        )
     }
 
-    // MARK: - Now Playing Info  (populates the right-panel metadata area)
+    // MARK: - Now Playing content refresh
 
-    private func refreshNowPlayingInfo() {
-        let album = albums[currentIndex]
+    /// Writes metadata to MPNowPlayingInfoCenter, then asynchronously fetches
+    /// real artwork and Wikipedia text before updating again.
+    @MainActor
+    private func refreshNowPlayingContent(for index: Int, animated: Bool) async {
+        guard index < releases.count else { return }
+        let release = releases[index]
 
-        // The metadata block that CarPlay's right panel renders:
-        //   Large line  → MPMediaItemPropertyTitle       (album name)
-        //   Medium line → MPMediaItemPropertyArtist      (artist)
-        //   Small line  → MPMediaItemPropertyAlbumTitle  (year • description)
+        // 1. Immediate update with placeholder artwork.
+        let placeholder = makeArtworkPlaceholder(for: release)
+        pushNowPlayingInfo(release: release,
+                           artwork: placeholder,
+                           description: nil)
+
+        // 2. Fetch real artwork in parallel with Wikipedia.
+        async let artworkTask  = loadArtwork(for: release)
+        async let wikiTask     = loadWikipedia(for: release)
+
+        let (image, wikiText) = await (artworkTask, wikiTask)
+
+        // Guard: user may have navigated away while we were fetching.
+        guard currentIndex == index else { return }
+
+        pushNowPlayingInfo(release: release,
+                           artwork: image ?? placeholder,
+                           description: wikiText)
+    }
+
+    /// Assembles the MPNowPlayingInfoCenter dictionary and pushes it.
+    private func pushNowPlayingInfo(release: Release,
+                                    artwork: UIImage?,
+                                    description: String?) {
+        // Right panel lines:
+        //   Large  → title
+        //   Medium → artist
+        //   Small  → year · first sentence of Wikipedia intro
+        let yearTag = release.year > 0 ? "\(release.year)" : ""
+        var smallLine = yearTag
+
+        if let wiki = description, !wiki.isEmpty {
+            let firstSentence = String(
+                wiki.components(separatedBy: ". ")
+                    .first(where: { $0.count > 20 }) ?? wiki
+            )
+            let truncated = firstSentence.count > 160
+                ? String(firstSentence.prefix(157)) + "…"
+                : firstSentence
+            smallLine = yearTag.isEmpty
+                ? truncated
+                : "\(yearTag)  ·  \(truncated)"
+        }
+
         var info: [String: Any] = [
-            MPMediaItemPropertyTitle:       album.title,
-            MPMediaItemPropertyArtist:      album.artist,
-            MPMediaItemPropertyAlbumTitle:  "\(album.year)  ·  \(album.description)",
-            MPNowPlayingInfoPropertyPlaybackRate:       0.0,
+            MPMediaItemPropertyTitle:                   release.title,
+            MPMediaItemPropertyArtist:                  release.artist,
+            MPMediaItemPropertyAlbumTitle:              smallLine,
+            MPNowPlayingInfoPropertyPlaybackRate:        0.0,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: 0.0,
-            MPMediaItemPropertyPlaybackDuration:        0.0,
-            MPNowPlayingInfoPropertyMediaType: MPNowPlayingInfoMediaType.none.rawValue
+            MPMediaItemPropertyPlaybackDuration:         0.0,
+            MPNowPlayingInfoPropertyMediaType:
+                MPNowPlayingInfoMediaType.none.rawValue,
         ]
 
-        // Album artwork – use a bold vinyl-record SF Symbol as placeholder.
-        // When the app is wired to Core Data / Discogs images, swap in the real UIImage here.
-        let artworkSize = CGSize(width: 600, height: 600)
-        let artworkImage = makeArtworkPlaceholder(size: artworkSize, album: album)
-        info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(
-            boundsSize: artworkSize
-        ) { _ in artworkImage }
+        if let art = artwork {
+            let size = art.size
+            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(
+                boundsSize: size
+            ) { _ in art }
+        }
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
 
-        // Keep the "Up Next" title in sync (shown beneath the transport buttons)
-        CPNowPlayingTemplate.shared.isUpNextButtonEnabled = false
+    // MARK: - Artwork loading
+
+    /// Returns a real image from the URL (with in-memory cache), or nil on failure.
+    private func loadArtwork(for release: Release) async -> UIImage? {
+        let urlStr = release.coverImageURL
+        guard !urlStr.isEmpty else { return nil }
+
+        if let cached = artworkCache[urlStr] { return cached }
+
+        guard let url = URL(string: urlStr),
+              let (data, resp) = try? await URLSession.shared.data(from: url),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let image = UIImage(data: data) else { return nil }
+
+        artworkCache[urlStr] = image
+        return image
+    }
+
+    /// Generates a vinyl-label placeholder with title / artist text baked in.
+    private func makeArtworkPlaceholder(for release: Release) -> UIImage {
+        let size = CGSize(width: 600, height: 600)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            // Background
+            UIColor.systemIndigo.withAlphaComponent(0.85).setFill()
+            ctx.fill(CGRect(origin: .zero, size: size))
+
+            // Vinyl disc
+            let margin: CGFloat = size.width * 0.06
+            let vinylRect = CGRect(
+                x: margin, y: margin,
+                width: size.width  - margin * 2,
+                height: size.height - margin * 2
+            )
+            UIColor.black.withAlphaComponent(0.72).setFill()
+            UIBezierPath(ovalIn: vinylRect).fill()
+
+            // Centre label circle
+            let labelDiam = size.width * 0.38
+            let labelRect = CGRect(
+                x: (size.width  - labelDiam) / 2,
+                y: (size.height - labelDiam) / 2,
+                width: labelDiam, height: labelDiam
+            )
+            UIColor.systemIndigo.setFill()
+            UIBezierPath(ovalIn: labelRect).fill()
+
+            // Text on label
+            let titleFont  = UIFont.boldSystemFont(ofSize: size.width * 0.055)
+            let artistFont = UIFont.systemFont(ofSize: size.width * 0.042)
+            let white      = UIColor.white
+
+            let titleAttr: [NSAttributedString.Key: Any] = [
+                .font: titleFont, .foregroundColor: white
+            ]
+            let artistAttr: [NSAttributedString.Key: Any] = [
+                .font: artistFont,
+                .foregroundColor: white.withAlphaComponent(0.85)
+            ]
+
+            let titleStr  = (release.title  as NSString)
+            let artistStr = (release.artist as NSString)
+
+            let tSize = titleStr.size(withAttributes: titleAttr)
+            let aSize = artistStr.size(withAttributes: artistAttr)
+            let cx = size.width / 2
+            let cy = size.height / 2
+
+            titleStr.draw(
+                at: CGPoint(x: cx - tSize.width / 2, y: cy - tSize.height - 4),
+                withAttributes: titleAttr
+            )
+            artistStr.draw(
+                at: CGPoint(x: cx - aSize.width / 2, y: cy + 4),
+                withAttributes: artistAttr
+            )
+        }
+    }
+
+    // MARK: - Wikipedia loading
+
+    private func loadWikipedia(for release: Release) async -> String? {
+        let key = "\(release.title.lowercased())|\(release.artist.lowercased())"
+        if let cached = wikiCache[key] { return cached }
+
+        let text = try? await WikipediaService.shared.fetchAlbumDescription(
+            albumTitle: release.title,
+            artist: release.artist,
+            year: release.year > 0 ? release.year : nil
+        )
+        if let text {
+            wikiCache[key] = text
+        }
+        return text
     }
 
     // MARK: - Navigation
 
-    private func showNext() {
-        currentIndex = (currentIndex + 1) % albums.count
-        refreshNowPlayingInfo()
+    private func showPrevious() {
+        guard !releases.isEmpty else { return }
+        currentIndex = (currentIndex - 1 + releases.count) % releases.count
+        Task { @MainActor in
+            await refreshNowPlayingContent(for: currentIndex, animated: true)
+        }
     }
 
-    private func showPrevious() {
-        currentIndex = (currentIndex - 1 + albums.count) % albums.count
-        refreshNowPlayingInfo()
+    private func showNext() {
+        guard !releases.isEmpty else { return }
+        currentIndex = (currentIndex + 1) % releases.count
+        Task { @MainActor in
+            await refreshNowPlayingContent(for: currentIndex, animated: true)
+        }
+    }
+
+    // MARK: - Collection list  (browse all releases)
+
+    private func showCollectionList() {
+        let sections: [CPListSection] = {
+            var items = releases.enumerated().map { idx, r -> CPListItem in
+                let subtitle = r.year > 0 ? "\(r.artist)  ·  \(r.year)" : r.artist
+                let item = CPListItem(text: r.title, detailText: subtitle)
+                item.handler = { [weak self] _, completion in
+                    guard let self else { completion(); return }
+                    self.currentIndex = idx
+                    Task { @MainActor in
+                        self.interfaceController?.popTemplate(animated: true)
+                        await self.refreshNowPlayingContent(for: idx, animated: true)
+                    }
+                    completion()
+                }
+                return item
+            }
+            return [CPListSection(items: items)]
+        }()
+
+        let listTemplate = CPListTemplate(
+            title: "My Collection",
+            sections: sections
+        )
+        listTemplate.emptyViewTitleVariants   = ["No Records"]
+        listTemplate.emptyViewSubtitleVariants = ["Add records in the SecondSpin app."]
+
+        interfaceController?.pushTemplate(listTemplate, animated: true)
+    }
+
+    // MARK: - Album detail  (CPInformationTemplate)
+
+    private func showAlbumDetail() {
+        guard currentIndex < releases.count else { return }
+        let release = releases[currentIndex]
+
+        var items: [CPInformationItem] = []
+
+        items.append(CPInformationItem(title: "Artist", detail: release.artist))
+
+        if release.year > 0 {
+            items.append(CPInformationItem(title: "Year", detail: "\(release.year)"))
+        }
+        if !release.label.isEmpty {
+            items.append(CPInformationItem(title: "Label", detail: release.label))
+        }
+        if !release.genres.isEmpty {
+            items.append(CPInformationItem(
+                title: "Genre",
+                detail: release.genres.joined(separator: ", ")
+            ))
+        }
+        if !release.fullFormatDisplay.isEmpty {
+            items.append(CPInformationItem(title: "Format", detail: release.fullFormatDisplay))
+        }
+
+        // Wikipedia snippet – use cache if already loaded.
+        let wikiKey = "\(release.title.lowercased())|\(release.artist.lowercased())"
+        if let wiki = wikiCache[wikiKey], !wiki.isEmpty {
+            let sentences = wiki.components(separatedBy: ". ")
+            let preview   = sentences.prefix(3).joined(separator: ". ")
+            let clipped   = preview.count > 320
+                ? String(preview.prefix(317)) + "…"
+                : preview
+            items.append(CPInformationItem(title: "About", detail: clipped))
+        }
+
+        // Copy condition summary
+        let copies = release.copies
+        if !copies.isEmpty {
+            let conditions = copies.map { $0.condition }.filter { !$0.isEmpty }
+            if !conditions.isEmpty {
+                items.append(CPInformationItem(
+                    title: copies.count == 1 ? "Condition" : "Conditions",
+                    detail: conditions.joined(separator: "  ·  ")
+                ))
+            }
+            let prices = copies.compactMap { c -> String? in
+                guard let p = c.purchasePrice else { return nil }
+                return String(format: "$%.2f", p)
+            }
+            if !prices.isEmpty {
+                items.append(CPInformationItem(
+                    title: copies.count == 1 ? "Paid" : "Prices",
+                    detail: prices.joined(separator: "  ·  ")
+                ))
+            }
+        }
+
+        let actions: [CPTextButton] = [
+            CPTextButton(title: "Spotify", textStyle: .confirm) { [weak self] _ in
+                self?.openSpotify()
+            },
+            CPTextButton(title: "Apple Music", textStyle: .normal) { [weak self] _ in
+                self?.openAppleMusic()
+            },
+            CPTextButton(title: "Back", textStyle: .cancel) { [weak self] _ in
+                self?.interfaceController?.popTemplate(animated: true)
+            },
+        ]
+
+        let detailTemplate = CPInformationTemplate(
+            title: release.title,
+            layout: .twoColumn,
+            items: items,
+            actions: actions
+        )
+
+        interfaceController?.pushTemplate(detailTemplate, animated: true)
     }
 
     // MARK: - Streaming
 
     private func openSpotify() {
-        let album = albums[currentIndex]
-        if let raw = album.spotifyURL, let url = URL(string: raw) {
+        guard currentIndex < releases.count else { return }
+        let release = releases[currentIndex]
+
+        if let raw = release.spotifyAlbumURL, !raw.isEmpty, let url = URL(string: raw) {
             UIApplication.shared.open(url)
         } else {
-            let q = "\(album.artist) \(album.title)"
+            let q = "\(release.artist) \(release.title)"
                 .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
             if let url = URL(string: "spotify:search:\(q)") {
                 UIApplication.shared.open(url)
@@ -223,16 +491,39 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
     }
 
     private func openAppleMusic() {
-        let album = albums[currentIndex]
-        if let raw = album.appleMusicURL, let url = URL(string: raw) {
+        guard currentIndex < releases.count else { return }
+        let release = releases[currentIndex]
+
+        if let raw = release.appleMusicAlbumURL, !raw.isEmpty, let url = URL(string: raw) {
             UIApplication.shared.open(url)
         } else {
-            let q = "\(album.artist) \(album.title)"
+            let q = "\(release.artist) \(release.title)"
                 .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
             if let url = URL(string: "https://music.apple.com/us/search?term=\(q)") {
                 UIApplication.shared.open(url)
             }
         }
+    }
+
+    // MARK: - Empty state
+
+    private func showEmptyState() {
+        let items = [
+            CPInformationItem(
+                title: "Collection is empty",
+                detail: "Open the SecondSpin app on your iPhone and add some vinyl records to get started."
+            )
+        ]
+        let actions = [
+            CPTextButton(title: "OK", textStyle: .cancel) { _ in }
+        ]
+        let emptyTemplate = CPInformationTemplate(
+            title: "SecondSpin",
+            layout: .twoColumn,
+            items: items,
+            actions: actions
+        )
+        interfaceController?.setRootTemplate(emptyTemplate, animated: false)
     }
 
     // MARK: - Helpers
@@ -241,69 +532,6 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         let cfg = UIImage.SymbolConfiguration(pointSize: 28, weight: .medium)
         return UIImage(systemName: name, withConfiguration: cfg)
             ?? UIImage(systemName: "music.note")!
-    }
-
-    /// Renders a simple vinyl-record placeholder that fills the artwork area.
-    private func makeArtworkPlaceholder(size: CGSize, album: AlbumEntry) -> UIImage {
-        let renderer = UIGraphicsImageRenderer(size: size)
-        return renderer.image { ctx in
-            // Dark background
-            UIColor.systemIndigo.withAlphaComponent(0.85).setFill()
-            ctx.fill(CGRect(origin: .zero, size: size))
-
-            // Vinyl circle
-            let margin: CGFloat = size.width * 0.06
-            let vinylRect = CGRect(
-                x: margin, y: margin,
-                width: size.width - margin * 2,
-                height: size.height - margin * 2
-            )
-            UIColor.black.withAlphaComponent(0.7).setFill()
-            UIBezierPath(ovalIn: vinylRect).fill()
-
-            // Label circle
-            let labelSize = size.width * 0.38
-            let labelRect = CGRect(
-                x: (size.width - labelSize) / 2,
-                y: (size.height - labelSize) / 2,
-                width: labelSize,
-                height: labelSize
-            )
-            UIColor.systemIndigo.setFill()
-            UIBezierPath(ovalIn: labelRect).fill()
-
-            // Album title on label
-            let titleFont = UIFont.boldSystemFont(ofSize: size.width * 0.055)
-            let artistFont = UIFont.systemFont(ofSize: size.width * 0.042)
-            let textColor = UIColor.white
-
-            let titleAttr: [NSAttributedString.Key: Any] = [
-                .font: titleFont,
-                .foregroundColor: textColor
-            ]
-            let artistAttr: [NSAttributedString.Key: Any] = [
-                .font: artistFont,
-                .foregroundColor: textColor.withAlphaComponent(0.85)
-            ]
-
-            let titleStr = album.title as NSString
-            let artistStr = album.artist as NSString
-
-            let titleSize = titleStr.size(withAttributes: titleAttr)
-            let artistSize = artistStr.size(withAttributes: artistAttr)
-
-            let centerX = size.width / 2
-            let centerY = size.height / 2
-
-            titleStr.draw(
-                at: CGPoint(x: centerX - titleSize.width / 2, y: centerY - titleSize.height - 4),
-                withAttributes: titleAttr
-            )
-            artistStr.draw(
-                at: CGPoint(x: centerX - artistSize.width / 2, y: centerY + 4),
-                withAttributes: artistAttr
-            )
-        }
     }
 }
 
