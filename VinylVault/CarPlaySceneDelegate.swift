@@ -103,7 +103,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         
         // Previous album button
         let previousButton = CPGridButton(titleVariants: ["Previous"], image: UIImage(systemName: "chevron.left")!) { [weak self] _ in
-            self?.showPreviousAlbum()
+            DispatchQueue.main.async { self?.showPreviousAlbum() }
         }
         buttons.append(previousButton)
         
@@ -113,13 +113,13 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
             titleVariants: [currentAlbum.title, currentAlbum.artist],
             image: UIImage(systemName: "music.note")!
         ) { [weak self] _ in
-            self?.showAlbumDetail()
+            DispatchQueue.main.async { self?.showAlbumDetail() }
         }
         buttons.append(albumButton)
         
         // Next album button
         let nextButton = CPGridButton(titleVariants: ["Next"], image: UIImage(systemName: "chevron.right")!) { [weak self] _ in
-            self?.showNextAlbum()
+            DispatchQueue.main.async { self?.showNextAlbum() }
         }
         buttons.append(nextButton)
         
@@ -128,7 +128,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
             titleVariants: ["Spotify"],
             image: UIImage(named: "SpotifyIcon") ?? UIImage(systemName: "play.circle")!
         ) { [weak self] _ in
-            self?.openSpotify()
+            DispatchQueue.main.async { self?.openSpotify() }
         }
         buttons.append(spotifyButton)
         
@@ -137,7 +137,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
             titleVariants: ["Apple Music"],
             image: UIImage(named: "AppleMusicIcon") ?? UIImage(systemName: "music.note")!
         ) { [weak self] _ in
-            self?.openAppleMusic()
+            DispatchQueue.main.async { self?.openAppleMusic() }
         }
         buttons.append(appleMusicButton)
         
@@ -146,7 +146,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
             titleVariants: ["About"],
             image: UIImage(systemName: "info.circle")!
         ) { [weak self] _ in
-            self?.showAboutSection()
+            DispatchQueue.main.async { self?.showAboutSection() }
         }
         buttons.append(aboutButton)
         
@@ -159,46 +159,46 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         currentAlbumIndex = (currentAlbumIndex - 1 + albums.count) % albums.count
         refreshInterface()
     }
-    
+
     private func showNextAlbum() {
         currentAlbumIndex = (currentAlbumIndex + 1) % albums.count
         refreshInterface()
     }
-    
+
     private func showAlbumDetail() {
         let currentAlbum = albums[currentAlbumIndex]
-        
+
         // Create detail items
         var detailItems: [CPInformationItem] = []
-        
+
         detailItems.append(CPInformationItem(
             title: "Artist",
             detail: currentAlbum.artist
         ))
-        
+
         detailItems.append(CPInformationItem(
             title: "Year",
             detail: "\(currentAlbum.year)"
         ))
-        
+
         detailItems.append(CPInformationItem(
             title: "Description",
             detail: currentAlbum.description
         ))
-        
+
         // Create actions
         let actions = [
             CPTextButton(title: "Stream on Spotify", textStyle: .confirm) { [weak self] _ in
-                self?.openSpotify()
+                DispatchQueue.main.async { self?.openSpotify() }
             },
             CPTextButton(title: "Stream on Apple Music", textStyle: .confirm) { [weak self] _ in
-                self?.openAppleMusic()
+                DispatchQueue.main.async { self?.openAppleMusic() }
             },
             CPTextButton(title: "Back", textStyle: .cancel) { [weak self] _ in
-                self?.interfaceController?.popTemplate(animated: true)
+                DispatchQueue.main.async { self?.interfaceController?.popTemplate(animated: true) }
             }
         ]
-        
+
         // Create information template
         let detailTemplate = CPInformationTemplate(
             title: currentAlbum.title,
@@ -206,8 +206,10 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
             items: detailItems,
             actions: actions
         )
-        
-        interfaceController?.pushTemplate(detailTemplate, animated: true)
+
+        DispatchQueue.main.async { [weak self] in
+            self?.interfaceController?.pushTemplate(detailTemplate, animated: true)
+        }
     }
     
     private func openSpotify() {
@@ -255,28 +257,31 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
                 detail: "SecondSpin helps you catalog and discover music from your vinyl collection. Browse your collection, get reviews, and stream albums on your favorite services."
             )
         ]
-        
+
         let actions = [
             CPTextButton(title: "Back", textStyle: .cancel) { [weak self] _ in
-                self?.interfaceController?.popTemplate(animated: true)
+                DispatchQueue.main.async { self?.interfaceController?.popTemplate(animated: true) }
             }
         ]
-        
+
         let aboutTemplate = CPInformationTemplate(
             title: "About SecondSpin",
             layout: .twoColumn,
             items: aboutItems,
             actions: actions
         )
-        
-        interfaceController?.pushTemplate(aboutTemplate, animated: true)
+
+        DispatchQueue.main.async { [weak self] in
+            self?.interfaceController?.pushTemplate(aboutTemplate, animated: true)
+        }
     }
-    
+
     private func refreshInterface() {
         guard let interfaceController = interfaceController else { return }
-
         let newTemplate = CPGridTemplate(title: "Album of the Day", gridButtons: createGridButtons())
-        interfaceController.setRootTemplate(newTemplate, animated: true)
+        DispatchQueue.main.async {
+            interfaceController.setRootTemplate(newTemplate, animated: true)
+        }
     }
 }
 
