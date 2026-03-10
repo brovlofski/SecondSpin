@@ -203,8 +203,8 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
             MPMediaItemPropertyTitle:                   release.title,
             MPMediaItemPropertyArtist:                  release.artist,
             MPMediaItemPropertyArtwork:                 artwork,
-            // .music tells CarPlay to render the full artwork layout.
-            MPNowPlayingInfoPropertyMediaType:          MPNowPlayingInfoMediaType.music.rawValue,
+            // .audio tells CarPlay to render the full artwork layout.
+            MPNowPlayingInfoPropertyMediaType:          MPNowPlayingInfoMediaType.audio.rawValue,
             MPNowPlayingInfoPropertyPlaybackRate:       0.0,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: 0.0,
             MPMediaItemPropertyPlaybackDuration:        0.0,
