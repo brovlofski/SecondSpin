@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import CarPlay
 
 @main
 struct VinylVaultApp: App {
