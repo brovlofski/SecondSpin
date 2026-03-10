@@ -81,6 +81,7 @@
 		BB0021 /* ImageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCache.swift; sourceTree = "<group>"; };
 		BB0022 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BB0023 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BB0032 /* SecondSpin.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SecondSpin.entitlements; sourceTree = "<group>"; };
 		BB0024 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		BB0025 /* AlbumArtworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumArtworkService.swift; sourceTree = "<group>"; };
 		BB0026 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -125,6 +126,7 @@
 				DD0008 /* Utilities */,
 				DD0009 /* Resources */,
 				BB0023 /* Info.plist */,
+				BB0032 /* SecondSpin.entitlements */,
 			);
 			path = VinylVault;
 			sourceTree = "<group>";
@@ -493,6 +495,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 63589JM4P8;
 				ENABLE_PREVIEWS = YES;
+				CODE_SIGN_ENTITLEMENTS = VinylVault/SecondSpin.entitlements;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VinylVault/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
@@ -528,6 +531,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 63589JM4P8;
 				ENABLE_PREVIEWS = YES;
+				CODE_SIGN_ENTITLEMENTS = VinylVault/SecondSpin.entitlements;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VinylVault/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
