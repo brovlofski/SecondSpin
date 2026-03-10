@@ -274,16 +274,9 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
     
     private func refreshInterface() {
         guard let interfaceController = interfaceController else { return }
-        
-        if let currentTemplate = interfaceController.topTemplate as? CPGridTemplate {
-            let newGridButtons = createGridButtons()
-            
-            // Update the grid template
-            let newTemplate = CPGridTemplate(title: "Album of the Day", gridButtons: newGridButtons)
-            
-            interfaceController.popTemplate(animated: false)
-            interfaceController.pushTemplate(newTemplate, animated: true)
-        }
+
+        let newTemplate = CPGridTemplate(title: "Album of the Day", gridButtons: createGridButtons())
+        interfaceController.setRootTemplate(newTemplate, animated: true)
     }
 }
 
