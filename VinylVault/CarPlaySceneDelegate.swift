@@ -76,12 +76,12 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         }
 
         if releases.isEmpty {
-            showEmptyState()
+            await showEmptyState()
             return
         }
 
         currentIndex = albumOfTheDayIndex()
-        pushNowPlayingTemplate()
+        await pushNowPlayingTemplate()
 
         // Kick off artwork + Wikipedia loads for the initial album.
         await refreshNowPlayingContent(for: currentIndex, animated: false)
@@ -132,12 +132,13 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
 
     // MARK: - Now Playing Template
 
-    private func pushNowPlayingTemplate() {
+    @MainActor
+    private func pushNowPlayingTemplate() async {
         let template = CPNowPlayingTemplate.shared
         template.isAlbumArtistButtonEnabled = false
         template.isUpNextButtonEnabled = false
         updateButtonRail()
-        interfaceController?.setRootTemplate(template, animated: false)
+        try? await interfaceController?.setRootTemplate(template, animated: false)
     }
 
     /// Rebuilds the streaming / info button rail.
@@ -159,13 +160,13 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         let infoBtn = CPNowPlayingImageButton(
             image: symbolImage("info.circle")
         ) { [weak self] _ in
-            DispatchQueue.main.async { self?.showAlbumDetail() }
+            Task { @MainActor [weak self] in await self?.showAlbumDetail() }
         }
 
         let browseBtn = CPNowPlayingImageButton(
             image: symbolImage("rectangle.stack")
         ) { [weak self] _ in
-            DispatchQueue.main.async { self?.showCollectionList() }
+            Task { @MainActor [weak self] in await self?.showCollectionList() }
         }
 
         CPNowPlayingTemplate.shared.updateNowPlayingButtons(
@@ -363,7 +364,8 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
 
     // MARK: - Collection list  (browse all releases)
 
-    private func showCollectionList() {
+    @MainActor
+    private func showCollectionList() async {
         let sections: [CPListSection] = {
             var items = releases.enumerated().map { idx, r -> CPListItem in
                 let subtitle = r.year > 0 ? "\(r.artist)  ·  \(r.year)" : r.artist
@@ -372,7 +374,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
                     guard let self else { completion(); return }
                     self.currentIndex = idx
                     Task { @MainActor in
-                        self.interfaceController?.popTemplate(animated: true)
+                        try? await self.interfaceController?.popTemplate(animated: true)
                         await self.refreshNowPlayingContent(for: idx, animated: true)
                     }
                     completion()
@@ -389,12 +391,13 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         listTemplate.emptyViewTitleVariants   = ["No Records"]
         listTemplate.emptyViewSubtitleVariants = ["Add records in the SecondSpin app."]
 
-        interfaceController?.pushTemplate(listTemplate, animated: true)
+        try? await interfaceController?.pushTemplate(listTemplate, animated: true)
     }
 
     // MARK: - Album detail  (CPInformationTemplate)
 
-    private func showAlbumDetail() {
+    @MainActor
+    private func showAlbumDetail() async {
         guard currentIndex < releases.count else { return }
         let release = releases[currentIndex]
 
@@ -459,7 +462,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
                 self?.openAppleMusic()
             },
             CPTextButton(title: "Back", textStyle: .cancel) { [weak self] _ in
-                self?.interfaceController?.popTemplate(animated: true)
+                Task { [weak self] in try? await self?.interfaceController?.popTemplate(animated: true) }
             },
         ]
 
@@ -470,7 +473,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
             actions: actions
         )
 
-        interfaceController?.pushTemplate(detailTemplate, animated: true)
+        try? await interfaceController?.pushTemplate(detailTemplate, animated: true)
     }
 
     // MARK: - Streaming
@@ -507,7 +510,8 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
 
     // MARK: - Empty state
 
-    private func showEmptyState() {
+    @MainActor
+    private func showEmptyState() async {
         let items = [
             CPInformationItem(
                 title: "Collection is empty",
@@ -523,7 +527,7 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
             items: items,
             actions: actions
         )
-        interfaceController?.setRootTemplate(emptyTemplate, animated: false)
+        try? await interfaceController?.setRootTemplate(emptyTemplate, animated: false)
     }
 
     // MARK: - Helpers
