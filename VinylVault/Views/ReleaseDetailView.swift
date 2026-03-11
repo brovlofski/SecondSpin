@@ -267,12 +267,9 @@ struct ReleaseDetailView: View {
                         if release.discogsId > 0 {
                             Link(destination: URL(string: "https://www.discogs.com/release/\(release.discogsId)")!) {
                                 HStack(spacing: 4) {
-                                    Text("View source:")
-                                        .font(.caption)
-                                        .foregroundColor(.accentColor)
                                     DiscogsLogoView()
                                         .frame(width: 12, height: 12)
-                                    Text("[r\(release.discogsId)]")
+                                    Text("[r\(String(release.discogsId))]")
                                         .font(.caption)
                                         .fontWeight(.medium)
                                         .foregroundColor(.accentColor)
@@ -363,36 +360,6 @@ struct ReleaseDetailView: View {
                     Divider()
                 }
                 
-                // Reviews Section
-                if isLoadingReviews {
-                    HStack {
-                        ProgressView()
-                        Text("Loading reviews...")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                } else if !albumReviews.isEmpty {
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Reviews (\(albumReviews.count))")
-                            .font(.headline)
-                        
-                        ForEach(albumReviews) { review in
-                            ReviewCardView(
-                                review: review,
-                                isExpanded: expandedReviewId == review.id
-                            ) {
-                                withAnimation {
-                                    expandedReviewId = expandedReviewId == review.id ? nil : review.id
-                                }
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    Divider()
-                }
-                
                 // Professional Rating Section (Wikipedia Professional Ratings)
                 if !wikipediaReviewScores.isEmpty {
                     VStack(alignment: .leading, spacing: 16) {
@@ -462,6 +429,36 @@ struct ReleaseDetailView: View {
                                             .font(.caption2)
                                     }
                                     .foregroundColor(.accentColor)
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Divider()
+                }
+                
+                // Reviews Section
+                if isLoadingReviews {
+                    HStack {
+                        ProgressView()
+                        Text("Loading reviews...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                } else if !albumReviews.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Reviews (\(albumReviews.count))")
+                            .font(.headline)
+                        
+                        ForEach(albumReviews) { review in
+                            ReviewCardView(
+                                review: review,
+                                isExpanded: expandedReviewId == review.id
+                            ) {
+                                withAnimation {
+                                    expandedReviewId = expandedReviewId == review.id ? nil : review.id
                                 }
                             }
                         }

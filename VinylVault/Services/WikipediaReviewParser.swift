@@ -555,7 +555,7 @@ struct WikipediaReviewParser {
         guard !scores.isEmpty else { return scores }
         
         // Remove single quotes from source names
-        var processedScores = scores.map { score in
+        let processedScores = scores.map { score in
             var cleanedSource = score.source
             // Remove single quotes (both ' and ")
             cleanedSource = cleanedSource.replacingOccurrences(of: "'", with: "")

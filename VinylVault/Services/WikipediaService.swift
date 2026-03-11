@@ -206,6 +206,23 @@ class WikipediaService {
             print("Wikipedia cache cleared and persisted")
         }
     }
+    
+    /// Clear cache for a specific album key
+    func clearCache(forKey key: String) async {
+        await withCheckedContinuation { continuation in
+            cacheQueue.async(flags: .barrier) { [weak self] in
+                self?.cache.removeValue(forKey: key)
+                // Persist the updated cache to UserDefaults
+                if let cache = self?.cache,
+                   let encoded = try? JSONEncoder().encode(cache) {
+                    UserDefaults.standard.set(encoded, forKey: "WikipediaCache")
+                    UserDefaults.standard.synchronize()
+                }
+                print("Wikipedia cache cleared for key: \(key)")
+                continuation.resume()
+            }
+        }
+    }
 
     // MARK: - Public API (backward compatible)
 

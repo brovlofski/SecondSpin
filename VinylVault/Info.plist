@@ -27,11 +27,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSBluetoothWhileInUseUsageDescription</key>
-	<string></string>
+	<string>SecondSpin uses Bluetooth to support CarPlay and nearby audio devices.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>SecondSpin needs access to your camera to scan album barcodes</string>
 	<key>OSBundleUsageDescription</key>
-	<string></string>
+	<string>SecondSpin requires system access to enable CarPlay features.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

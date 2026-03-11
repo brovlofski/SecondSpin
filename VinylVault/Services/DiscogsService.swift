@@ -31,7 +31,7 @@ struct DiscogsRelease: Codable, Identifiable {
     }
 }
 
-struct DiscogsReleaseDetail: Codable {
+struct DiscogsReleaseDetail: Codable, Identifiable {
     let id: Int
     let title: String
     let year: Int?
@@ -44,6 +44,7 @@ struct DiscogsReleaseDetail: Codable {
     let images: [DiscogsImage]?
     let identifiers: [DiscogsIdentifier]?
     let country: String?
+    let notes: String?
     
     struct DiscogsArtist: Codable {
         let name: String

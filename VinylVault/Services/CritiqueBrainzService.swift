@@ -112,9 +112,18 @@ actor CritiqueBrainzService {
     /// Clear all cached data
     func clearCache() {
         reviewsCache.removeAll()
-        
+
         let defaults = UserDefaults.standard
         defaults.removeObject(forKey: "CritiqueBrainzCache")
+    }
+    
+    /// Clear cache for a specific MBID
+    func clearCache(forMBID mbid: String) async {
+        reviewsCache.removeValue(forKey: mbid)
+        
+        // Save updated cache
+        saveCache()
+        print("CritiqueBrainz cache cleared for MBID: \(mbid)")
     }
 }
 

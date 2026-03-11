@@ -490,10 +490,10 @@ struct SettingsView: View {
             var errorCount = 0
             
             // Capture releases array on main actor
-            let releasesToSync = await MainActor.run { Array(releases) }
-            let totalReleases = releasesToSync.count
+            let releaseIDs = await MainActor.run { releases.map(\.persistentModelID) }
+            let totalReleases = releaseIDs.count
             
-            for (index, release) in releasesToSync.enumerated() {
+            for (index, releaseID) in releaseIDs.enumerated() {
                 // Update progress
                 await MainActor.run {
                     syncProgress = Double(index) / Double(totalReleases)
@@ -504,12 +504,21 @@ struct SettingsView: View {
                     )
                 }
                 
+                let discogsId = await MainActor.run {
+                    (modelContext.model(for: releaseID) as? Release)?.discogsId
+                }
+                guard let discogsId else {
+                    errorCount += 1
+                    continue
+                }
+
                 do {
                     // Fetch latest details from Discogs
-                    let details = try await DiscogsService.shared.getReleaseDetails(releaseId: release.discogsId)
+                    let details = try await DiscogsService.shared.getReleaseDetails(releaseId: discogsId)
                     
                     // Update release with latest data (excluding images)
                     await MainActor.run {
+                        guard let release = modelContext.model(for: releaseID) as? Release else { return }
                         let artist = details.artists.first?.name ?? "Unknown Artist"
                         
                         release.title = details.title
@@ -527,19 +536,21 @@ struct SettingsView: View {
                             Track(position: $0.position, title: $0.title, duration: $0.duration)
                         } ?? []
                         
-                        updatedCount += 1
                     }
+                    updatedCount += 1
                     
                     // Small delay to respect API rate limits
                     try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
                     
                 } catch {
-                    print("Failed to sync release \(release.discogsId): \(error)")
+                    print("Failed to sync release \(discogsId): \(error)")
                     errorCount += 1
                 }
             }
-            
+
             // Save changes
+            let finalUpdatedCount = updatedCount
+            let finalErrorCount = errorCount
             await MainActor.run {
                 do {
                     try modelContext.save()
@@ -551,16 +562,16 @@ struct SettingsView: View {
                 syncProgress = 1.0
                 isSyncing = false
                 
-                if errorCount == 0 {
+                if finalErrorCount == 0 {
                     syncResult = String(
                         format: NSLocalizedString("Successfully updated %d releases", comment: ""),
-                        updatedCount
+                        finalUpdatedCount
                     )
                 } else {
                     syncResult = String(
                         format: NSLocalizedString("Updated %d releases. %d failed.", comment: ""),
-                        updatedCount,
-                        errorCount
+                        finalUpdatedCount,
+                        finalErrorCount
                     )
                 }
                 

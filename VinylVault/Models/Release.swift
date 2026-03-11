@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class Release: @unchecked Sendable {
+final class Release {
     @Attribute(.unique) var discogsId: Int
     var title: String
     var artist: String
@@ -28,6 +28,7 @@ final class Release: @unchecked Sendable {
     var barcode: String?
     var dateAdded: Date
     var tracklist: [Track]
+    var notes: String?
     /// Verified direct Spotify album URL (nil = not yet resolved)
     var spotifyAlbumURL: String?
     /// Verified direct Apple Music album URL (nil = not yet resolved)
@@ -58,7 +59,8 @@ final class Release: @unchecked Sendable {
         country: String? = nil,
         barcode: String? = nil,
         dateAdded: Date = Date(),
-        tracklist: [Track] = []
+        tracklist: [Track] = [],
+        notes: String? = nil
     ) {
         self.discogsId = discogsId
         self.title = title
@@ -77,6 +79,7 @@ final class Release: @unchecked Sendable {
         self.barcode = barcode
         self.dateAdded = dateAdded
         self.tracklist = tracklist
+        self.notes = notes
         self.spotifyAlbumURL = nil
         self.appleMusicAlbumURL = nil
         self.streamingLinksVerified = false

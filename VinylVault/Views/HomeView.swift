@@ -226,11 +226,12 @@ struct HomeView: View {
                     }
                 }
                 
-                // Action Button
+                // Action Button - Fixed for dark mode visibility
                 NavigationLink(destination: ReleaseDetailView(release: album)) {
                     Text("View Details")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .fontWeight(.semibold)
+                        .foregroundColor(Color(.systemBackground))
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Color.accentColor)

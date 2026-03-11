@@ -23,6 +23,7 @@ struct SearchResultsView: View {
     let searchType: SearchType
 
     @State private var selectedRelease: DiscogsRelease?
+    @State private var selectedDiscogsDetail: DiscogsReleaseDetail?
     @State private var selectedExistingRelease: Release?
     @State private var isLoadingDetails = false
     @State private var showError = false
@@ -69,6 +70,9 @@ struct SearchResultsView: View {
             } message: {
                 Text(errorMessage)
             }
+            .sheet(item: $selectedDiscogsDetail) { detail in
+                DiscogsPreviewView(discogsDetail: detail)
+            }
             .sheet(item: $selectedExistingRelease) { existingRelease in
                 AddCopyView(release: existingRelease)
             }
@@ -82,7 +86,7 @@ struct SearchResultsView: View {
             // Release already in collection – add another copy
             selectedExistingRelease = existing
         } else {
-            // Fetch full details and add new release
+            // Fetch full details and show preview
             isLoadingDetails = true
 
             Task {
@@ -91,7 +95,7 @@ struct SearchResultsView: View {
 
                     await MainActor.run {
                         isLoadingDetails = false
-                        addRelease(from: details)
+                        selectedDiscogsDetail = details
                     }
                 } catch {
                     await MainActor.run {
@@ -135,7 +139,8 @@ struct SearchResultsView: View {
             formatDescriptions: details.formats?.first?.descriptions ?? [],
             country: details.country,
             barcode: details.identifiers?.first(where: { $0.type == "Barcode" })?.value,
-            tracklist: details.tracklist?.map { Track(position: $0.position, title: $0.title, duration: $0.duration) } ?? []
+            tracklist: details.tracklist?.map { Track(position: $0.position, title: $0.title, duration: $0.duration) } ?? [],
+            notes: details.notes
         )
 
         // Add first copy

@@ -169,7 +169,7 @@ final class ImageCache {
 // MARK: - CachedAsyncImage
 
 /// AsyncImage replacement with memory + disk caching and Discogs auth support.
-struct CachedAsyncImage<Content: View, Placeholder: View>: View {
+public struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     let url: URL?
     let content: (Image) -> Content
     let placeholder: () -> Placeholder
@@ -186,7 +186,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         self.placeholder = placeholder
     }
 
-    var body: some View {
+    public var body: some View {
         Group {
             if let image = image {
                 content(Image(uiImage: image))

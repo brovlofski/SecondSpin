@@ -207,10 +207,25 @@ actor MusicBrainzService {
     func clearCache() {
         mbidCache.removeAll()
         dataCache.removeAll()
-        
+
         let defaults = UserDefaults.standard
         defaults.removeObject(forKey: "MusicBrainzMBIDCache")
         defaults.removeObject(forKey: "MusicBrainzDataCache")
+    }
+    
+    /// Clear cache for a specific artist/album combination
+    func clearCache(forArtist artist: String, album: String) async {
+        let cacheKey = "\(artist.lowercased())|\(album.lowercased())"
+        
+        // Remove from MBID cache
+        if let mbid = mbidCache.removeValue(forKey: cacheKey) {
+            // Also remove from data cache if present
+            dataCache.removeValue(forKey: mbid)
+            
+            // Save updated caches
+            saveCache()
+            print("MusicBrainz cache cleared for: \(artist) - \(album)")
+        }
     }
 }
 

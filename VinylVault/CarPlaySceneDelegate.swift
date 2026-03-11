@@ -140,7 +140,12 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
         template.isAlbumArtistButtonEnabled = false
         template.isUpNextButtonEnabled = false
         buildButtonRail()
-        try? await interfaceController?.setRootTemplate(template, animated: false)
+        guard let interfaceController else { return }
+        do {
+            try await interfaceController.setRootTemplate(template, animated: false)
+        } catch {
+            print("Failed to set Now Playing template: \(error)")
+        }
     }
 
     /// Two buttons only: Spotify (left) and Apple Music (right).
@@ -321,7 +326,12 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate {
             items: items,
             actions: actions
         )
-        try? await interfaceController?.setRootTemplate(template, animated: false)
+        guard let interfaceController else { return }
+        do {
+            try await interfaceController.setRootTemplate(template, animated: false)
+        } catch {
+            print("Failed to set empty state template: \(error)")
+        }
     }
 }
 
