@@ -129,7 +129,7 @@ struct HomeView: View {
             }
             
             VStack(spacing: 16) {
-                // Album Cover
+                // Album Cover - Changed to square
                 CachedAsyncImage(url: URL(string: album.coverImageURL)) { image in
                     image
                         .resizable()
@@ -143,7 +143,7 @@ struct HomeView: View {
                                 .foregroundColor(.gray)
                         )
                 }
-                .frame(height: 300)
+                .frame(width: 300, height: 300)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
                 

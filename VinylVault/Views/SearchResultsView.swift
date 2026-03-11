@@ -191,17 +191,27 @@ struct SearchResultRow: View {
         HStack(spacing: 12) {
             // Thumbnail - prefer coverImage over thumb for better quality
             let imageURL = result.coverImage ?? result.thumb
-            CachedAsyncImage(url: URL(string: imageURL ?? "")) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
+            ZStack(alignment: .center) {
+                // Background rectangle
                 Rectangle()
                     .fill(Color.gray.opacity(0.2))
-                    .overlay(
-                        Image(systemName: "music.note")
-                            .foregroundColor(.gray)
-                    )
+                
+                // Album art image
+                if let urlString = imageURL, let url = URL(string: urlString) {
+                    CachedAsyncImage(url: url) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: 60, maxHeight: 60)
+                    } placeholder: {
+                        // Empty placeholder - shows background
+                    }
+                } else {
+                    // Placeholder icon when no image
+                    Image(systemName: "music.note")
+                        .foregroundColor(.gray)
+                        .font(.system(size: 24))
+                }
             }
             .frame(width: 60, height: 60)
             .clipShape(RoundedRectangle(cornerRadius: 8))

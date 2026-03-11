@@ -129,9 +129,29 @@ struct ReleaseDetailView: View {
                 
                 // Basic Info
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(release.title)
-                        .font(.title)
-                        .fontWeight(.bold)
+                    HStack(alignment: .center) {
+                        Text(release.title)
+                            .font(.title)
+                            .fontWeight(.bold)
+                        
+                        Spacer()
+                        
+                        // Refresh button for updating album info from Discogs
+                        Button {
+                            refreshAlbumInfo()
+                        } label: {
+                            if isLoadingDiscogs {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                    .frame(width: 20, height: 20)
+                            } else {
+                                Image(systemName: "arrow.clockwise.circle")
+                                    .font(.title2)
+                                    .foregroundColor(.accentColor)
+                            }
+                        }
+                        .disabled(isLoadingDiscogs)
+                    }
                     
                     Text(release.artist)
                         .font(.title3)
@@ -748,6 +768,52 @@ struct ReleaseDetailView: View {
         // Clear CritiqueBrainz cache if we have an MBID
         if let mbid = musicBrainzMBID {
             await CritiqueBrainzService.shared.clearCache(forMBID: mbid)
+        }
+    }
+    
+    private func refreshAlbumInfo() {
+        isLoadingDiscogs = true
+        discogsRefreshError = nil
+        
+        Task {
+            do {
+                // Always fetch fresh data from Discogs using the existing discogsId
+                // This is equivalent to deleting and re-adding with fresh info
+                let discogsDetail = try await DiscogsService.shared.getReleaseDetails(releaseId: release.discogsId)
+                
+                // Update the release with fresh data
+                await MainActor.run {
+                    updateReleaseWithDiscogsData(discogsDetail)
+                    isLoadingDiscogs = false
+                    
+                    // Clear all caches to force reload of Wikipedia, MusicBrainz, etc.
+                    Task {
+                        await clearCachesForAlbum()
+                        
+                        // Reload all data after Discogs refresh
+                        await MainActor.run {
+                            // Clear cached data
+                            wikipediaDescription = nil
+                            wikipediaURL = nil
+                            wikipediaReviewScores = []
+                            musicBrainzRating = nil
+                            musicBrainzGenres = []
+                            albumReviews = []
+                            musicBrainzMBID = nil
+                            
+                            // Reload all data
+                            loadAllData(showLoadingIndicators: true)
+                        }
+                    }
+                }
+                
+            } catch {
+                await MainActor.run {
+                    isLoadingDiscogs = false
+                    discogsRefreshError = error.localizedDescription
+                    print("Error refreshing Discogs info: \(error)")
+                }
+            }
         }
     }
     
