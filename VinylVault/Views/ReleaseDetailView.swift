@@ -8,6 +8,32 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Discogs Logo View
+
+struct DiscogsLogoView: View {
+    var body: some View {
+        GeometryReader { geometry in
+            let size = min(geometry.size.width, geometry.size.height)
+            let strokeWidth = size * 0.5  // 50% of size for stroke
+            let innerCircleSize = size * 0.25  // 25% of size for inner circle
+            
+            ZStack {
+                // Outer circle (vinyl record)
+                Circle()
+                    .stroke(Color.black, lineWidth: strokeWidth)
+                
+                // Inner circle (record label)
+                Circle()
+                    .fill(Color.black)
+                    .frame(width: innerCircleSize, height: innerCircleSize)
+            }
+        }
+        .aspectRatio(1, contentMode: .fit)
+    }
+}
+
+// MARK: - ReleaseDetailView
+
 struct ReleaseDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -34,6 +60,27 @@ struct ReleaseDetailView: View {
     @State private var musicBrainzMBID: String?
     @State private var expandedReviewId: String?
     @State private var showAllReviewScores = false
+    @State private var hasLoadedData = false
+    @State private var isLoadingDiscogs = false
+    @State private var discogsRefreshError: String?
+    
+    // Session cache key based on release identifier
+    private var cacheKey: String {
+        "\(release.discogsId)-\(release.title)-\(release.artist)"
+    }
+    
+    // Static session cache
+    private static var sessionCache: [String: CachedData] = [:]
+    
+    private struct CachedData {
+        let wikipediaDescription: String?
+        let wikipediaURL: URL?
+        let wikipediaReviewScores: [AlbumReviewScore]
+        let musicBrainzRating: MusicBrainzRating?
+        let musicBrainzGenres: [MusicBrainzGenre]
+        let albumReviews: [AlbumReview]
+        let musicBrainzMBID: String?
+    }
     
     var body: some View {
         ScrollView {
@@ -149,6 +196,7 @@ struct ReleaseDetailView: View {
                         Text("Tracklist")
                             .font(.headline)
                         Spacer()
+                        
                         HStack(spacing: 14) {
                             Button {
                                 StreamingLinkService.shared.openSpotify(
@@ -212,10 +260,70 @@ struct ReleaseDetailView: View {
                             }
                         }
                     }
+                    
+                    // Discogs source link - moved to end of tracklist section
+                    HStack {
+                        Spacer()
+                        if release.discogsId > 0 {
+                            Link(destination: URL(string: "https://www.discogs.com/release/\(release.discogsId)")!) {
+                                HStack(spacing: 4) {
+                                    Text("View source:")
+                                        .font(.caption)
+                                        .foregroundColor(.accentColor)
+                                    DiscogsLogoView()
+                                        .frame(width: 12, height: 12)
+                                    Text("[r\(release.discogsId)]")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.accentColor)
+                                }
+                            }
+                        } else {
+                            // Refresh button for missing discogs info
+                            Button {
+                                fetchDiscogsInfo()
+                            } label: {
+                                HStack(spacing: 4) {
+                                    if isLoadingDiscogs {
+                                        ProgressView()
+                                            .scaleEffect(0.6)
+                                            .frame(width: 10, height: 10)
+                                    } else {
+                                        Image(systemName: "arrow.clockwise")
+                                            .font(.caption)
+                                    }
+                                    Text("Fetch Discogs info")
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.accentColor)
+                            }
+                            .disabled(isLoadingDiscogs)
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Divider()
+                
+                // Notes Section
+                if let notes = release.notes, !notes.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Notes")
+                            .font(.headline)
+                        
+                        Text(notes)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Divider()
+                }
                 
                 // MusicBrainz Rating Section
                 if isLoadingMusicBrainz {
@@ -465,7 +573,7 @@ struct ReleaseDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            loadAllData()
+            loadAllData(showLoadingIndicators: false)
         }
         .task {
             guard !release.streamingLinksVerified else { return }
@@ -498,13 +606,34 @@ struct ReleaseDetailView: View {
         }
     }
     
-    private func loadAllData() {
-        // Skip if already loaded
+    private func loadAllData(showLoadingIndicators: Bool = true) {
+        // Skip if already loaded in this view instance
         guard wikipediaDescription == nil && musicBrainzRating == nil else { return }
         
-        isLoadingWikipedia = true
-        isLoadingMusicBrainz = true
-        isLoadingReviews = true
+        // Check session cache first
+        if let cachedData = Self.sessionCache[cacheKey] {
+            // Load from cache
+            wikipediaDescription = cachedData.wikipediaDescription
+            wikipediaURL = cachedData.wikipediaURL
+            wikipediaReviewScores = cachedData.wikipediaReviewScores
+            musicBrainzRating = cachedData.musicBrainzRating
+            musicBrainzGenres = cachedData.musicBrainzGenres
+            albumReviews = cachedData.albumReviews
+            musicBrainzMBID = cachedData.musicBrainzMBID
+            
+            // IMPORTANT: Set loading states to false when loading from cache
+            // This prevents "Loading rating..." and "Loading review..." from showing
+            isLoadingWikipedia = false
+            isLoadingMusicBrainz = false
+            isLoadingReviews = false
+            return
+        }
+        
+        if showLoadingIndicators {
+            isLoadingWikipedia = true
+            isLoadingMusicBrainz = true
+            isLoadingReviews = true
+        }
         
         Task {
             // Load Wikipedia and MusicBrainz data concurrently
@@ -522,15 +651,31 @@ struct ReleaseDetailView: View {
                     wikipediaURL = wiki.pageURL
                     wikipediaReviewScores = wiki.reviewScores
                 }
-                isLoadingWikipedia = false
+                if showLoadingIndicators {
+                    isLoadingWikipedia = false
+                }
                 
                 // MusicBrainz data (mbData is a tuple, not optional)
                 musicBrainzRating = mbData.rating
                 musicBrainzGenres = mbData.genres
                 musicBrainzMBID = mbData.mbid
                 albumReviews = mbData.reviews
-                isLoadingMusicBrainz = false
-                isLoadingReviews = false
+                if showLoadingIndicators {
+                    isLoadingMusicBrainz = false
+                    isLoadingReviews = false
+                }
+                
+                // Cache the data for future use
+                let cachedData = CachedData(
+                    wikipediaDescription: wikipediaDescription,
+                    wikipediaURL: wikipediaURL,
+                    wikipediaReviewScores: wikipediaReviewScores,
+                    musicBrainzRating: musicBrainzRating,
+                    musicBrainzGenres: musicBrainzGenres,
+                    albumReviews: albumReviews,
+                    musicBrainzMBID: musicBrainzMBID
+                )
+                Self.sessionCache[cacheKey] = cachedData
             }
         }
     }
@@ -593,6 +738,154 @@ struct ReleaseDetailView: View {
     private func deleteRelease() {
         modelContext.delete(release)
         dismiss()
+    }
+    
+    private func clearCachesForAlbum() async {
+        // Clear Wikipedia cache for this album
+        let wikiKey = "\(release.title.lowercased())|\(release.artist.lowercased())"
+        await WikipediaService.shared.clearCache(forKey: wikiKey)
+        
+        // Clear MusicBrainz cache for this album
+        await MusicBrainzService.shared.clearCache(forArtist: release.artist, album: release.title)
+        
+        // Clear CritiqueBrainz cache if we have an MBID
+        if let mbid = musicBrainzMBID {
+            await CritiqueBrainzService.shared.clearCache(forMBID: mbid)
+        }
+    }
+    
+    private func fetchDiscogsInfo() {
+        isLoadingDiscogs = true
+        discogsRefreshError = nil
+        
+        Task {
+            do {
+                // Try to fetch discogs info using the existing discogsId if available
+                // or search by artist and title if not
+                let discogsDetail: DiscogsReleaseDetail
+                
+                if release.discogsId > 0 {
+                    // Fetch details for existing discogsId
+                    discogsDetail = try await DiscogsService.shared.getReleaseDetails(releaseId: release.discogsId)
+                } else {
+                    // Search for the release by artist and title
+                    let searchResults = try await DiscogsService.shared.searchByArtistAndTitle(
+                        artist: release.artist,
+                        title: release.title
+                    )
+                    
+                    guard let firstResult = searchResults.first else {
+                        throw DiscogsError.noResults
+                    }
+                    
+                    // Fetch details for the first result
+                    discogsDetail = try await DiscogsService.shared.getReleaseDetails(releaseId: firstResult.id)
+                }
+                
+                // Update the release with fresh data
+                await MainActor.run {
+                    updateReleaseWithDiscogsData(discogsDetail)
+                    isLoadingDiscogs = false
+                }
+                
+            } catch {
+                await MainActor.run {
+                    isLoadingDiscogs = false
+                    discogsRefreshError = error.localizedDescription
+                    print("Error fetching Discogs info: \(error)")
+                }
+            }
+        }
+    }
+    
+    private func updateReleaseWithDiscogsData(_ detail: DiscogsReleaseDetail) {
+        // Update discogsId if it was missing
+        if release.discogsId <= 0 {
+            release.discogsId = detail.id
+        }
+        
+        // Update title and artist if needed
+        if !detail.title.isEmpty {
+            release.title = detail.title
+        }
+        
+        if let firstArtist = detail.artists.first {
+            release.artist = firstArtist.name
+        }
+        
+        // Update year
+        if let year = detail.year, year > 0 {
+            release.year = year
+        }
+        
+        // Update label
+        if let firstLabel = detail.labels.first {
+            release.label = firstLabel.name
+            release.catalogNumber = firstLabel.catno
+        }
+        
+        // Update genres and styles
+        if let genres = detail.genres {
+            release.genres = genres
+        }
+        
+        if let styles = detail.styles {
+            release.styles = styles
+        }
+        
+        // Update format information
+        if let formats = detail.formats, !formats.isEmpty {
+            let formatNames = formats.map { $0.name }
+            release.format = formatNames.first ?? release.format
+            
+            // Collect all format descriptions
+            var allDescriptions: [String] = []
+            for format in formats {
+                if let descriptions = format.descriptions {
+                    allDescriptions.append(contentsOf: descriptions)
+                }
+            }
+            release.formatDescriptions = allDescriptions
+        }
+        
+        // Update country
+        if let country = detail.country {
+            release.country = country
+        }
+        
+        // Update tracklist
+        if let discogsTracks = detail.tracklist {
+            release.tracklist = discogsTracks.map { track in
+                Track(
+                    position: track.position,
+                    title: track.title,
+                    duration: track.duration
+                )
+            }
+        }
+        
+        // Update notes
+        if let notes = detail.notes, !notes.isEmpty {
+            release.notes = notes
+        }
+        
+        // Update images
+        if let images = detail.images, !images.isEmpty {
+            let coverImage = images.first { $0.type == "primary" } ?? images.first
+            if let coverImage = coverImage {
+                release.coverImageURL = coverImage.uri
+                release.thumbnailImageURL = coverImage.uri150 ?? coverImage.uri
+                
+                // Collect all image URLs
+                release.allImageURLs = images.map { $0.uri }
+            }
+        }
+        
+        // Clear session cache since we updated the release data
+        Self.sessionCache.removeValue(forKey: cacheKey)
+        
+        // Save changes
+        try? modelContext.save()
     }
 }
 
