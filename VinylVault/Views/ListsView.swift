@@ -10,7 +10,21 @@ import SwiftData
 
 struct ListsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \RecordList.orderIndex) private var lists: [RecordList]
+    @Query(sort: \RecordList.orderIndex) private var allLists: [RecordList]
+    
+    // Separate system lists from user lists
+    private var systemLists: [RecordList] {
+        allLists.filter { $0.isSystemList }
+    }
+    
+    private var userLists: [RecordList] {
+        allLists.filter { !$0.isSystemList }
+    }
+    
+    private var lists: [RecordList] {
+        // System lists first, then user lists
+        systemLists + userLists
+    }
     
     @State private var showCreateList = false
     @State private var newListName = ""
@@ -119,10 +133,12 @@ struct ListsView: View {
     // MARK: - List Management
     
     private func createList() {
+        // Calculate order index for new user list (after all system lists)
+        let userListCount = userLists.count
         let list = RecordList(
             name: newListName.trimmingCharacters(in: .whitespaces),
             listDescription: newListDescription.trimmingCharacters(in: .whitespaces),
-            orderIndex: lists.count
+            orderIndex: userListCount  // Positive index for user lists
         )
         
         modelContext.insert(list)
@@ -133,17 +149,39 @@ struct ListsView: View {
     }
     
     private func moveList(from source: IndexSet, to destination: Int) {
+        // Prevent moving system lists
+        let sourceLists = source.map { lists[$0] }
+        let containsSystemList = sourceLists.contains { $0.isSystemList }
+        
+        if containsSystemList {
+            // Don't allow moving system lists
+            return
+        }
+        
         var revisedLists = lists
         revisedLists.move(fromOffsets: source, toOffset: destination)
         
-        for (index, list) in revisedLists.enumerated() {
-            list.orderIndex = index
+        // Update order indices, keeping system lists at the top
+        var currentIndex = 0
+        for list in revisedLists {
+            if list.isSystemList {
+                // System lists keep negative indices to stay at top
+                list.orderIndex = -1 - currentIndex
+            } else {
+                // User lists get positive indices starting from 0
+                list.orderIndex = currentIndex
+            }
+            currentIndex += 1
         }
     }
     
     private func deleteList(at offsets: IndexSet) {
         for index in offsets {
-            modelContext.delete(lists[index])
+            let list = lists[index]
+            // Prevent deletion of system lists
+            if !list.isSystemList {
+                modelContext.delete(list)
+            }
         }
     }
 }
@@ -154,20 +192,32 @@ struct ListRowView: View {
     let list: RecordList
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(list.name)
-                .font(.headline)
-            
-            if !list.listDescription.isEmpty {
-                Text(list.listDescription)
-                    .font(.subheadline)
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(list.name)
+                        .font(.headline)
+                    
+                    if list.isSystemList {
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                if !list.listDescription.isEmpty {
+                    Text(list.listDescription)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+                
+                Text("\(list.releases.count) \(list.releases.count == 1 ? "album" : "albums")")
+                    .font(.caption)
                     .foregroundColor(.secondary)
-                    .lineLimit(2)
             }
             
-            Text("\(list.releases.count) \(list.releases.count == 1 ? "album" : "albums")")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            Spacer()
         }
         .padding(.vertical, 4)
     }

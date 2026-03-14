@@ -25,6 +25,7 @@ struct CollectionView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var appState: AppState
     @Query private var releases: [Release]
+    @Query private var lists: [RecordList]
     
     @State private var viewMode: CollectionViewMode = .grid
     @State private var sortOption: SortOption = .random
@@ -35,6 +36,7 @@ struct CollectionView: View {
     @State private var filteredAndSortedReleases: [Release] = []
     @State private var allGenres: [String] = []
     @State private var showGenreBrowser = false
+    @State private var listenLaterList: RecordList?
     
     var body: some View {
         NavigationStack {
@@ -50,12 +52,12 @@ struct CollectionView: View {
                 if releases.isEmpty {
                     emptyStateView
                 } else {
-                    ScrollView {
-                        if viewMode == .grid {
+                    if viewMode == .grid {
+                        ScrollView {
                             gridView
-                        } else {
-                            listView
                         }
+                    } else {
+                        listView  // List has its own scrolling, don't wrap in ScrollView
                     }
                 }
             }
@@ -182,6 +184,22 @@ struct CollectionView: View {
                 NavigationLink(destination: ReleaseDetailView(release: release)) {
                     GridItemView(release: release)
                 }
+                .contextMenu {
+                    Button {
+                        addToListenLater(release)
+                    } label: {
+                        Label("Add to Listen Later", systemImage: "clock.badge.checkmark")
+                    }
+                    .disabled(isInListenLater(release))
+                    
+                    Divider()
+                    
+                    Button(role: .destructive) {
+                        removeFromCollection(release)
+                    } label: {
+                        Label("Delete from Collection", systemImage: "trash")
+                    }
+                }
             }
         }
         .padding()
@@ -190,16 +208,30 @@ struct CollectionView: View {
     // MARK: - List View
     
     private var listView: some View {
-        LazyVStack(spacing: 0) {
+        List {
             ForEach(filteredAndSortedReleases) { release in
                 NavigationLink(destination: ReleaseDetailView(release: release)) {
                     ListItemView(release: release)
                 }
-                .buttonStyle(.plain)
-                
-                Divider()
+                .swipeActions(edge: .leading) {
+                    Button {
+                        addToListenLater(release)
+                    } label: {
+                        Label("Listen Later", systemImage: "clock.badge.checkmark")
+                    }
+                    .tint(.accentColor)
+                    .disabled(isInListenLater(release))
+                }
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        removeFromCollection(release)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
             }
         }
+        .listStyle(.plain)
     }
     
     // MARK: - Empty State
@@ -220,6 +252,74 @@ struct CollectionView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(40)
+    }
+    
+    // MARK: - Listen Later Functions
+    
+    private func getListenLaterList() -> RecordList? {
+        if let existingList = listenLaterList {
+            return existingList
+        }
+        
+        // Find the Listen Later system list
+        let listenLaterType = SystemListType.listenLater.rawValue
+        let listenLaterList = lists.first { list in
+            list.systemListType?.rawValue == listenLaterType
+        }
+        
+        self.listenLaterList = listenLaterList
+        return listenLaterList
+    }
+    
+    private func isInListenLater(_ release: Release) -> Bool {
+        guard let listenLaterList = getListenLaterList() else {
+            return false
+        }
+        
+        return listenLaterList.releases.contains { $0.discogsId == release.discogsId }
+    }
+    
+    private func addToListenLater(_ release: Release) {
+        guard let listenLaterList = getListenLaterList() else {
+            // Should not happen since system list is created on app startup
+            print("Error: Listen Later list not found")
+            return
+        }
+        
+        // Check if already in list
+        if listenLaterList.releases.contains(where: { $0.discogsId == release.discogsId }) {
+            return
+        }
+        
+        // Ensure we're on the main thread for SwiftData operations
+        Task {
+            await MainActor.run {
+                // Add album to Listen Later list
+                listenLaterList.releases.append(release)
+                
+                // Show success toast
+                appState.showToast("Added \"\(release.title)\" to Listen Later")
+                
+                // Save changes
+                try? modelContext.save()
+            }
+        }
+    }
+    
+    private func removeFromCollection(_ release: Release) {
+        // Ensure we're on the main thread for SwiftData operations
+        Task {
+            await MainActor.run {
+                // Delete the release
+                modelContext.delete(release)
+                
+                // Save changes
+                try? modelContext.save()
+                
+                // Show success toast
+                appState.showToast("Deleted \"\(release.title)\" from collection")
+            }
+        }
     }
 }
 
@@ -361,9 +461,6 @@ struct ListItemView: View {
                     .background(Color.accentColor)
                     .clipShape(Circle())
             }
-
-            Image(systemName: "chevron.right")
-                .foregroundColor(.secondary)
         }
         .padding(.vertical, 8)
         .padding(.horizontal)

@@ -24,6 +24,8 @@ struct VinylVaultApp: App {
 
         if let container = VinylVaultApp.makeContainer(schema: schema) {
             modelContainer = container
+            // Initialize system lists
+            initializeSystemLists(in: container.mainContext)
         } else {
             fatalError("Could not initialize ModelContainer even after store reset.")
         }
@@ -118,6 +120,37 @@ struct VinylVaultApp: App {
         case 1: return .light
         case 2: return .dark
         default: return nil  // System default
+        }
+    }
+    
+    // MARK: - System List Initialization
+    
+    /// Initializes system lists (Listen Later, etc.) if they don't exist
+    private func initializeSystemLists(in context: ModelContext) {
+        // Check if Listen Later list already exists
+        let descriptor = FetchDescriptor<RecordList>(
+            predicate: #Predicate { list in
+                list.isSystemList == true && list.name == "Listen Later"
+            }
+        )
+        
+        do {
+            let existingLists = try context.fetch(descriptor)
+            if existingLists.isEmpty {
+                // Create Listen Later system list
+                let listenLaterList = RecordList.createSystemList(
+                    type: .listenLater,
+                    name: "Listen Later",
+                    description: "Albums you want to listen to later"
+                )
+                context.insert(listenLaterList)
+                try context.save()
+                print("✅ Created 'Listen Later' system list")
+            } else {
+                print("✅ 'Listen Later' system list already exists")
+            }
+        } catch {
+            print("❌ Error initializing system lists: \(error)")
         }
     }
 }

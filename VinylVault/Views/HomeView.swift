@@ -10,7 +10,9 @@ import SwiftData
 
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var appState: AppState
     @Query private var releases: [Release]
+    @Query private var lists: [RecordList]
     
     @State private var albumOfTheDay: Release?
     @State private var wikipediaDescription: String?
@@ -19,6 +21,9 @@ struct HomeView: View {
     @State private var scrollOffset: CGFloat = 0
     @State private var dragOffset: CGFloat = 0
     @State private var isDragging = false
+    @State private var isInListenLater: Bool = false
+    @State private var isAddingToListenLater: Bool = false
+    @State private var listenLaterList: RecordList?
     
     private let albumOfTheDayKey = "albumOfTheDayKey"
     private let albumOfTheDayDateKey = "albumOfTheDayDateKey"
@@ -159,7 +164,7 @@ struct HomeView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
-                // Listen Now Section with Streaming Buttons (no text, no background, aligned left)
+                // Listen Now Section with Streaming Buttons and Listen Later
                 VStack(alignment: .leading, spacing: 12) {
                     Divider()
                     
@@ -167,33 +172,66 @@ struct HomeView: View {
                         .font(.headline)
                     
                     HStack(spacing: 24) {
-                        Button {
-                            StreamingLinkService.shared.openSpotify(
-                                release: album,
-                                artist: album.artist,
-                                album: album.title
-                            )
-                        } label: {
-                            Image("SpotifyIcon")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 44, height: 44)
+                        // Left half: Streaming buttons
+                        HStack(spacing: 24) {
+                            Button {
+                                StreamingLinkService.shared.openSpotify(
+                                    release: album,
+                                    artist: album.artist,
+                                    album: album.title
+                                )
+                            } label: {
+                                Image("SpotifyIcon")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 44, height: 44)
+                            }
+                            .buttonStyle(.plain)
+                            
+                            Button {
+                                StreamingLinkService.shared.openAppleMusic(
+                                    release: album,
+                                    artist: album.artist,
+                                    album: album.title
+                                )
+                            } label: {
+                                Image("AppleMusicIcon")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 44, height: 44)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                         
+                        Spacer()
+                        
+                        // Right half: Listen Later button
                         Button {
-                            StreamingLinkService.shared.openAppleMusic(
-                                release: album,
-                                artist: album.artist,
-                                album: album.title
-                            )
+                            if isInListenLater {
+                                // Already in list - show toast message
+                                appState.showToast("Already added to Listen Later")
+                            } else {
+                                addToListenLater(album: album)
+                            }
                         } label: {
-                            Image("AppleMusicIcon")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 44, height: 44)
+                            if isAddingToListenLater {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                    .frame(width: 44, height: 44)
+                            } else {
+                                Image(systemName: isInListenLater ? "checkmark.circle" : "plus.circle")
+                                    .font(.system(size: 36))
+                                    .foregroundColor(isInListenLater ? .green : .black)
+                                    .frame(width: 44, height: 44)
+                            }
                         }
                         .buttonStyle(.plain)
+                        .onAppear {
+                            checkIfInListenLater(album: album)
+                        }
+                        .onChange(of: album) { oldAlbum, newAlbum in
+                            checkIfInListenLater(album: newAlbum)
+                        }
                     }
                 }
 
@@ -368,6 +406,64 @@ struct HomeView: View {
                 await MainActor.run {
                     isLoadingWikipedia = false
                 }
+            }
+        }
+    }
+    
+    // MARK: - Listen Later Functions
+    
+    private func getListenLaterList() -> RecordList? {
+        if let existingList = listenLaterList {
+            return existingList
+        }
+        
+        // Find the Listen Later system list
+        let listenLaterType = SystemListType.listenLater.rawValue
+        let listenLaterList = lists.first { list in
+            list.systemListType?.rawValue == listenLaterType
+        }
+        
+        self.listenLaterList = listenLaterList
+        return listenLaterList
+    }
+    
+    private func checkIfInListenLater(album: Release) {
+        guard let listenLaterList = getListenLaterList() else {
+            isInListenLater = false
+            return
+        }
+        
+        // Check if album is already in the Listen Later list
+        isInListenLater = listenLaterList.releases.contains { $0.discogsId == album.discogsId }
+    }
+    
+    private func addToListenLater(album: Release) {
+        guard let listenLaterList = getListenLaterList() else {
+            // Should not happen since system list is created on app startup
+            print("Error: Listen Later list not found")
+            return
+        }
+        
+        // Check if already in list
+        if listenLaterList.releases.contains(where: { $0.discogsId == album.discogsId }) {
+            isInListenLater = true
+            return
+        }
+        
+        isAddingToListenLater = true
+        
+        Task {
+            // Add album to Listen Later list
+            await MainActor.run {
+                listenLaterList.releases.append(album)
+                isInListenLater = true
+                isAddingToListenLater = false
+                
+                // Show success toast
+                appState.showToast("Added \"\(album.title)\" to Listen Later")
+                
+                // Save changes
+                try? modelContext.save()
             }
         }
     }
